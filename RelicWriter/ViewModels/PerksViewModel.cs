@@ -113,10 +113,9 @@ public sealed class PerkLink : ViewModelBase
     public bool IsRelic => from.IsRelic;
 }
 
-public sealed record PerkTreeViewModel(string Title, IReadOnlyList<PerkViewModel> Perks, IReadOnlyList<PerkLink> Links)
+public sealed record PerkTreeViewModel(string Title, IReadOnlyList<PerkViewModel> Perks, IReadOnlyList<PerkLink> Links, double Height)
 {
     public double Width => PerkLayout.Width;
-    public double Height => PerkLayout.Height;
 }
 
 /// <summary>The perks tab: every perk of the attribute trees and the Relic tree, with the unspent points kept in step.</summary>
@@ -134,10 +133,10 @@ public partial class PerksViewModel : ViewModelBase
         Trees = new ObservableCollection<PerkTreeViewModel>(Perks.TreeData.Keys.Where(dev.HasTree).Select(tree =>
         {
             var perks = Perks.All.Where(p => p.Tree == tree).Select(p => new PerkViewModel(dev, p, Spend, () => Trees.SelectMany(t => t.Perks), RaiseAttribute, CanBuy)).ToList();
-            PerkLayout.Place(perks);
+            var height = PerkLayout.Place(perks);
             var byId = perks.ToDictionary(p => p.Info.Id);
             var links = perks.SelectMany(to => to.Info.RequiredPerks.Where(byId.ContainsKey).Select(id => new PerkLink(byId[id], to))).ToList();
-            return new PerkTreeViewModel(tree == Perks.RelicTree ? "RELIC" : tree.ToUpperInvariant(), perks, links);
+            return new PerkTreeViewModel(tree == Perks.RelicTree ? "RELIC" : tree.ToUpperInvariant(), perks, links, height);
         }));
 
         // Lowering an attribute takes back the perks its new value no longer unlocks (the points come back through Spend).
