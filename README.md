@@ -1,8 +1,12 @@
 # RelicWriter
 
+[![Latest release](https://img.shields.io/github/v/release/hendy643/RelicWriter)](https://github.com/hendy643/RelicWriter/releases/latest) [![Build](https://github.com/hendy643/RelicWriter/actions/workflows/build.yml/badge.svg?event=pull_request)](https://github.com/hendy643/RelicWriter/actions/workflows/build.yml)
+
 A save game editor for **Cyberpunk 2077**, written in C# with Avalonia (Windows and Linux).
 
 Open a `sav.dat`, change your character, perks, appearance presets, inventory and vehicles, and save it back. Parts of the save that RelicWriter doesn't understand are written back byte for byte, so unknown data survives an edit.
+
+**Download:** [RelicWriter on Nexus Mods](https://www.nexusmods.com/cyberpunk2077/mods/35763), or the [GitHub releases](https://github.com/hendy643/RelicWriter/releases).
 
 > **Back up your saves before editing them.** This is an unofficial, in-development tool. A bad edit can corrupt a save or break it in game. You use it at your own risk.
 
