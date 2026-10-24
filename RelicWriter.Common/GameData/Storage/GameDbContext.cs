@@ -55,6 +55,8 @@ internal sealed class PerkRow
     [Column("max_level")] public int MaxLevel { get; set; }
     [Column("cost_per_level")] public int CostPerLevel { get; set; }
     [Column("display_name")] public string? DisplayName { get; set; }
+    [Column("requires")] public string Requires { get; set; } = "";
+    [Column("attribute_points")] public int AttributePoints { get; set; }
 }
 
 [Table("constant"), PrimaryKey(nameof(Name))]

@@ -99,6 +99,27 @@ public sealed class PlayerDevelopment
         changedTrees.Add(Tree(perk.Tree)!);
     }
 
+    // The game keeps an entry (level 0 if need be) for every perk it has unlocked: all the perks it requires at their top level and the attribute at its
+    // tier's value. It buys only unlocked perks, and takes the entries of dependent perks away when a perk is sold.
+    void SyncUnlocked(string tree)
+    {
+        var list = PerkStructs(tree)!;
+        var points = Attributes.FirstOrDefault(a => a.Stat == Perks.AttributeStat(tree))?.Value ?? 0;
+        var all = Perks.All.ToDictionary(p => p.Id);
+        foreach (var perk in Perks.All.Where(p => p.Tree == tree))
+        {
+            var unlocked = points >= perk.AttributePoints && perk.RequiredPerks.All(r => all.TryGetValue(r, out var q) && PerkLevel(q) == q.MaxLevel);
+            var has = list.Any(s => PerkName(s) == perk.Id);
+            if (unlocked && !has)
+            {
+                var s = Tree(tree)!.NewStruct();
+                s.SetEnum("type", "gamedataNewPerkType", perk.Id);
+                list.Add(s);
+            }
+            else if (!unlocked && has && PerkLevel(perk) == 0) list.RemoveAll(s => PerkName(s) == perk.Id);
+        }
+    }
+
     /// <summary>Every perk entry in the save: the attribute tree it belongs to, the perk and its level.</summary>
     public IEnumerable<(string Tree, string Perk, int Level)> PerkEntries =>
         attributeDataStructs.SelectMany(a => a.GetStructs("unlockedPerks").Select(p => (a.GetEnum("type") ?? BlobTypes.EnumDefault("gamedataAttributeDataType")!, PerkName(p), p.GetInt("currLevel") ?? 0)));
@@ -138,6 +159,13 @@ public sealed class PlayerDevelopment
         data.SetStructs("proficiencies", proficiencyStructs);
         data.SetStructs("attributes", attributeStructs);
         data.SetStructs("devPoints", pointStructs);
+        // Only trees whose perks or attribute were edited are brought in step, so an unedited save stays byte-identical.
+        foreach (var tree in Perks.TreeData.Keys.Where(k => Tree(k) is not null))
+            if (changedTrees.Contains(Tree(tree)!) || Attributes.Any(a => a.Stat == Perks.AttributeStat(tree) && a.Value != (a.Source.GetInt("value") ?? 0)))
+            {
+                SyncUnlocked(tree);
+                changedTrees.Add(Tree(tree)!);
+            }
         if (changedTrees.Count > 0)
         {
             foreach (var tree in Perks.TreeData.Keys.Where(k => Tree(k) is { } t && changedTrees.Contains(t))) Tree(tree)!.SetStructs("unlockedPerks", treePerks[tree], "array:SNewPerk");

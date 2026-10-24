@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t">
+  <title id="t">Relic Writer</title>
+  <!--
+    Master icon for Relic Writer: a Relic biochip (the Phantom Liberty chip) with a pen nib on it, in the app's Cyberpunk palette
+    (see Themes/Cyberpunk.axaml): near-black #07080C, yellow #FCEE09, cyan #19F3F7, red #FF3B5C.
+    Drawn on a 512 grid with the artwork inside the central 448 so it survives round and rounded-square masks.
+    For small sizes (16 to 32 px) hide the elements with class "detail" (pins, circuit traces, glitch slice).
+  -->
+  <defs>
+    <!-- The nib: a pointed shoulder shape with a breather hole and a slit down to the tip. -->
+    <g id="nib">
+      <path d="M256 128 L336 244 L304 300 L256 392 L208 300 L176 244 Z" />
+    </g>
+    <clipPath id="slice"><rect x="0" y="286" width="512" height="26" /></clipPath>
+    <clipPath id="rest">
+      <path d="M0 0 H512 V286 H0 Z M0 312 H512 V512 H0 Z" />
+    </clipPath>
+  </defs>
+
+  <!-- Tile: dark, with two cut corners like the app's panels. -->
+  <path d="M72 16 H440 L496 72 V440 L440 496 H72 L16 440 V72 Z" fill="#07080C" stroke="#2B3142" stroke-width="8" stroke-linejoin="miter" />
+
+  <!-- Chip body with a cut corner, pins and traces. -->
+  <g fill="none" stroke="#FCEE09" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M128 96 H384 V344 L336 392 H128 Z" stroke-width="14" />
+    <g class="detail" stroke-width="12">
+      <path d="M96 150 H128 M96 214 H128 M96 278 H128 M96 342 H128" />
+      <path d="M384 150 H416 M384 214 H416 M384 278 H416" />
+      <path d="M176 392 V424 M232 392 V424 M288 392 V424" />
+      <path d="M176 96 V64 M232 96 V64 M288 96 V64 M344 96 V64" />
+    </g>
+  </g>
+  <g class="detail" fill="none" stroke="#19F3F7" stroke-width="6" stroke-linecap="square" opacity=".9">
+    <path d="M150 128 H196 L212 144" />
+    <path d="M362 128 H330 L316 142" />
+    <path d="M150 360 H198 L214 344" />
+  </g>
+
+  <!-- Nib with a chromatic split: cyan and red copies behind the yellow one. -->
+  <g clip-path="url(#rest)">
+    <use xlink:href="#nib" href="#nib" fill="#19F3F7" transform="translate(-9 0)" />
+    <use xlink:href="#nib" href="#nib" fill="#FF3B5C" transform="translate(9 0)" />
+    <use xlink:href="#nib" href="#nib" fill="#FCEE09" />
+  </g>
+  <!-- A glitch slice: a band of the nib shifted sideways. -->
+  <g class="detail" clip-path="url(#slice)">
+    <use xlink:href="#nib" href="#nib" fill="#FCEE09" transform="translate(22 0)" />
+  </g>
+
+  <!-- Hole and slit cut out of the nib. -->
+  <g fill="#07080C" stroke="#07080C" stroke-linecap="square">
+    <circle cx="256" cy="244" r="17" stroke="none" />
+    <path d="M256 261 V378" stroke-width="9" fill="none" />
+  </g>
+</svg>

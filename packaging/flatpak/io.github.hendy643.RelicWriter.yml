@@ -1,0 +1,50 @@
+app-id: io.github.hendy643.RelicWriter
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: relicwriter
+
+# The app is published by build.sh (self-contained, linux-x64, trimmed, ReadyToRun) into ./publish; the manifest only installs that folder, so the
+# build needs no network and no .NET SDK inside the sandbox.
+finish-args:
+  - --share=ipc
+  - --socket=x11            # Avalonia has no Wayland backend; XWayland serves it
+  - --device=dri            # OpenGL
+  - --share=network         # the check for a newer release
+  # Where the save files and the game live (read by SaveLocator and GameLocator): Steam, Steam as a Flatpak, Lutris and Heroic.
+  - --filesystem=~/.local/share/Steam
+  - --filesystem=~/.steam
+  - --filesystem=~/.var/app/com.valvesoftware.Steam
+  - --filesystem=~/.var/app/net.lutris.Lutris
+  - --filesystem=~/.var/app/com.heroicgameslauncher.hgl
+  - --filesystem=~/.config/lutris:ro
+  - --filesystem=~/.config/heroic:ro
+  - --filesystem=~/Games
+
+modules:
+  - name: relicwriter
+    buildsystem: simple
+    build-commands:
+      - install -d /app/lib/relicwriter
+      - cp -r publish/. /app/lib/relicwriter/
+      - chmod 755 /app/lib/relicwriter/RelicWriter.Desktop
+      - install -Dm755 relicwriter.sh /app/bin/relicwriter
+      - install -Dm644 io.github.hendy643.RelicWriter.desktop /app/share/applications/io.github.hendy643.RelicWriter.desktop
+      - install -Dm644 io.github.hendy643.RelicWriter.metainfo.xml /app/share/metainfo/io.github.hendy643.RelicWriter.metainfo.xml
+      - install -d /app/share/icons/hicolor
+      - cp -r icons/hicolor/. /app/share/icons/hicolor/
+    sources:
+      - type: dir
+        path: publish
+        dest: publish
+      - type: script
+        dest-filename: relicwriter.sh
+        commands:
+          - exec /app/lib/relicwriter/RelicWriter.Desktop "$@"
+      - type: file
+        path: io.github.hendy643.RelicWriter.desktop
+      - type: file
+        path: io.github.hendy643.RelicWriter.metainfo.xml
+      - type: dir
+        path: icons/hicolor
+        dest: icons/hicolor

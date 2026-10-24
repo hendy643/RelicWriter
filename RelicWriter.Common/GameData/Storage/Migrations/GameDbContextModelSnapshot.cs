@@ -85,6 +85,10 @@ namespace RelicWriter.Common.GameData.Storage.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<int>("AttributePoints")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attribute_points");
+
                     b.Property<int>("CostPerLevel")
                         .HasColumnType("INTEGER")
                         .HasColumnName("cost_per_level");
@@ -96,6 +100,11 @@ namespace RelicWriter.Common.GameData.Storage.Migrations
                     b.Property<int>("MaxLevel")
                         .HasColumnType("INTEGER")
                         .HasColumnName("max_level");
+
+                    b.Property<string>("Requires")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("requires");
 
                     b.Property<int>("Sort")
                         .HasColumnType("INTEGER")

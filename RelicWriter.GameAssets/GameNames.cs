@@ -65,6 +65,24 @@ public sealed class GameNames
         return key is not null && key.StartsWith(LocKeyPrefix, StringComparison.OrdinalIgnoreCase) && ulong.TryParse(key[LocKeyPrefix.Length..], out var primary) ? screens.Text(primary) : null;
     }
 
+    /// <summary>The perks that must be at their top level before this perk can be bought (its requiresPerks), by name; null when the game files don't list the perk.</summary>
+    public string[]? PerkRequirements(string perk, IEnumerable<string> allPerks)
+    {
+        static ulong PerkId(string p) => TweakDb.Id(Hashing.Crc32(System.Text.Encoding.ASCII.GetBytes("NewPerks." + p)), "NewPerks.".Length + p.Length);
+        var ids = db.Links(TweakDb.Append(PerkId(perk), ".requiresPerks"));
+        if (ids is null) return null;
+        var byId = allPerks.ToDictionary(PerkId);
+        return ids.Select(id => byId[id]).ToArray();
+    }
+
+    /// <summary>The attribute value a perk needs before it can be bought: the requiredAttributePoints of its tier record. Null when the game files don't say.</summary>
+    public int? PerkAttributePoints(string perk)
+    {
+        var record = "NewPerks." + perk;
+        var id = TweakDb.Id(Hashing.Crc32(System.Text.Encoding.ASCII.GetBytes(record)), record.Length);
+        return db.Link(TweakDb.Append(id, ".tier")) is { } tier ? db.Int(TweakDb.Append(tier, ".requiredAttributePoints")) : null;
+    }
+
     string? Text(ulong flat) => db.LocKey(flat) is { } key ? screens.Text(key) : null;
 
     /// <summary>Where the game keeps a vehicle's picture: its icon record names a texture atlas (the hash of the atlas file's path) and a part of it. Null if the game has none.</summary>

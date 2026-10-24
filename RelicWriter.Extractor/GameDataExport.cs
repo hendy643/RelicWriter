@@ -55,8 +55,11 @@ static class GameDataExport
         vehicles.AddRange((previous?.Vehicles ?? []).Where(v => !vehicleNames.Contains(v.Record)));
         foreach (var v in vehicles.Where(v => v.Atlas is null)) Console.Error.WriteLine("no icon: " + v.Record);
 
-        var perks = Seed("new-perks.txt").Select(line => line.Split((char)9)).Select(p => new PerkInfo(p[0], p[0][..p[0].IndexOf('_')], int.Parse(p[1]),
-            RelicMilestones.Contains(p[0]) ? RelicMilestoneCost : DefaultCost, game.PerkName(p[0]) ?? previous?.Perks.FirstOrDefault(o => o.Id == p[0])?.DisplayName)).ToList();
+        var perkIds = Seed("new-perks.txt").Select(line => line.Split((char)9)).ToList();
+        var perks = perkIds.Select(p => new PerkInfo(p[0], p[0][..p[0].IndexOf('_')], int.Parse(p[1]),
+            RelicMilestones.Contains(p[0]) ? RelicMilestoneCost : DefaultCost, game.PerkName(p[0]) ?? previous?.Perks.FirstOrDefault(o => o.Id == p[0])?.DisplayName,
+            string.Join(' ', game.PerkRequirements(p[0], perkIds.Select(q => q[0])) ?? previous?.Perks.FirstOrDefault(o => o.Id == p[0])?.RequiredPerks ?? []),
+            game.PerkAttributePoints(p[0]) ?? previous?.Perks.FirstOrDefault(o => o.Id == p[0])?.AttributePoints ?? 0)).ToList();
         perks.AddRange((previous?.Perks ?? []).Where(o => perks.All(p => p.Id != o.Id)));
         foreach (var p in perks.Where(p => p.DisplayName is null)) Console.Error.WriteLine("no perk name: " + p.Id);
 

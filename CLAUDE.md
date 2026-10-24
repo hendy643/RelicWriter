@@ -9,6 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Regenerate codecs from the spec: `dotnet run --project RelicWriter.Generator -- docs/save-spec.xml RelicWriter.Common/Codecs/Generated`
 - Update the spec for a game build: `dotnet run --project RelicWriter.Extractor -- --game <game dir> --saves <saves dir> --previous docs/save-spec.xml --out <dir>`
 - New game data migration: `dotnet run --project RelicWriter.Extractor -- gamedata --game <game dir> --out Database --saves <saves dir>`, then rebuild (see `docs/game-database.md`)
+- Installer (WiX 6 MSI, per user, self-contained trimmed app; not in the solution build): `dotnet build RelicWriter.Installer -c Release`, see `docs/installer.md`
+- Flatpak (Linux, self-contained linux-x64 trimmed ReadyToRun): `packaging/flatpak/build.sh`, see `docs/flatpak.md`
+- Icons: `RelicWriter/Assets/Icon.svg` is the master; `powershell -File packaging/icons/make-icons.ps1` (needs Chrome or Edge) renders `Icon.ico`, `Icon.png` and the Linux sizes in `packaging/flatpak/icons/` from it
 - Tests: `dotnet test RelicWriter.Tests`. No linting is set up.
 
 ## Architecture

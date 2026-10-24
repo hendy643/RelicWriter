@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Relic Writer
+Comment=Save game editor for Cyberpunk 2077
+Exec=relicwriter %f
+Icon=io.github.hendy643.RelicWriter
+Terminal=false
+Categories=Utility;Game;
+Keywords=Cyberpunk;save;editor;

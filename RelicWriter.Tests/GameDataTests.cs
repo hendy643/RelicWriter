@@ -89,8 +89,14 @@ public class GameDataTests : IDisposable
         strings.WriteByte((byte)text.Length); strings.Write(text);
         strings.Write(BitConverter.GetBytes(1u));
         strings.Write(BitConverter.GetBytes((uint)Flat("NewPerks.test.loc_name_key"))); strings.WriteByte((byte)(Flat("NewPerks.test.loc_name_key") >> 32)); strings.Write(new byte[3]); strings.Write(BitConverter.GetBytes(0u));
+        // Two arrays: the first holds two ids; the second holds 70, whose count takes two bytes (6 bits, a continuation flag, then the rest).
+        var two = new byte[] { 2 }.Concat(U32Pair(1, 5)).Concat(U32Pair(2, 6)).ToArray();
+        var seventy = new byte[] { 70 & 0x3F | 0x40, 70 >> 6 }.Concat(Enumerable.Range(0, 70).SelectMany(i => U32Pair((uint)i + 100, 7))).ToArray();
+        var arrays = Block([two, seventy], [(Flat("NewPerks.test.requiresPerks"), 0), (Flat("NewPerks.big.requiresPerks"), 1)]);
+        var ints = Block([BitConverter.GetBytes(-9)], [(Flat("NewPerks.test.value"), 0)]);
         return WriteTweakDb(name,
-            ("gamedataLocKeyWrapper", locKeys, 3, 3), ("TweakDBID", links, 1, 1), ("raRef:CResource", resources, 1, 1), ("CName", names.ToArray(), 1, 1), ("String", strings.ToArray(), 1, 1));
+            ("gamedataLocKeyWrapper", locKeys, 3, 3), ("TweakDBID", links, 1, 1), ("raRef:CResource", resources, 1, 1), ("CName", names.ToArray(), 1, 1), ("String", strings.ToArray(), 1, 1),
+            ("array:TweakDBID", arrays, 2, 2), ("Int32", ints, 1, 1));
     }
 
     [Fact]
@@ -116,6 +122,19 @@ public class GameDataTests : IDisposable
         Assert.Equal("test_part", db.Name(TweakDb.Append(icon, ".atlasPartName")));
         Assert.Equal("LocKey#12", db.String(Flat("NewPerks.test.loc_name_key")));
         Assert.Null(db.String(Flat("NewPerks.other.loc_name_key")));
+    }
+
+    [Fact]
+    public void TweakDbGivesIntegersAndIdArrays()
+    {
+        var db = TweakDb.Open([TestTweakDb()])!;
+        Assert.Equal(-9, db.Int(Flat("NewPerks.test.value")));
+        Assert.Null(db.Int(Flat("NewPerks.test.other")));
+        Assert.Equal([TweakDb.Id(1, 5), TweakDb.Id(2, 6)], db.Links(Flat("NewPerks.test.requiresPerks"))!);
+        var big = db.Links(Flat("NewPerks.big.requiresPerks"))!;
+        Assert.Equal(70, big.Length);
+        Assert.Equal(TweakDb.Id(169, 7), big[^1]);
+        Assert.Null(db.Links(Flat("NewPerks.test.other")));
     }
 
     [Fact]

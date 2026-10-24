@@ -2,9 +2,11 @@ using RelicWriter.Common.GameData;
 
 namespace RelicWriter.Common.Model;
 
-/// <summary>One perk: its tree, how many levels it has and what each level costs.</summary>
-public sealed record PerkInfo(string Id, string Tree, int MaxLevel, int CostPerLevel, string? DisplayName = null)
+/// <summary>One perk: its tree, how many levels it has and what each level costs. <paramref name="Requires"/> lists, space separated, the perks that must be at their top level first. <paramref name="AttributePoints"/> is the attribute value the perk's tier needs before it can be bought.</summary>
+public sealed record PerkInfo(string Id, string Tree, int MaxLevel, int CostPerLevel, string? DisplayName = null, string Requires = "", int AttributePoints = 0)
 {
+    public string[] RequiredPerks => Requires.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
     public bool IsRelic => Tree == Perks.RelicTree;
 
     public int TotalCost => MaxLevel * CostPerLevel;
@@ -17,6 +19,9 @@ public sealed record PerkInfo(string Id, string Tree, int MaxLevel, int CostPerL
 public static class Perks
 {
     public const string RelicTree = "Espionage";
+
+    /// <summary>The save's attribute stat a tree's perks need points in (the trees are named Body and Tech, the stats Strength and TechnicalAbility); the Relic tree has none.</summary>
+    public static string AttributeStat(string tree) => tree switch { "Body" => "Strength", "Tech" => "TechnicalAbility", _ => tree };
 
     /// <summary>Perk points a character can earn in a normal game with Phantom Liberty (59 from levelling to 60, 10 from skills, 13 from Perk Shards).</summary>
     public static int OfficialMaxPerkPoints => GameDatabase.Current.Constants[GameDatabase.OfficialMaxPerkPoints];

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.hendy643.RelicWriter</id>
+  <name>Relic Writer</name>
+  <summary>Save game editor for Cyberpunk 2077</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <!-- No licence has been chosen for the project yet. -->
+  <project_license>LicenseRef-proprietary</project_license>
+  <developer_name>hendy643</developer_name>
+  <description>
+    <p>Edits Cyberpunk 2077 and Phantom Liberty save files: character level, attributes, skills, perks and Relic perks, money, inventory, vehicles and face shape. Item, vehicle and perk names are read from your own copy of the game.</p>
+    <p>Keep a backup of your saves. This is an unofficial tool and is not affiliated with CD PROJEKT RED.</p>
+  </description>
+  <launchable type="desktop-id">io.github.hendy643.RelicWriter.desktop</launchable>
+  <url type="homepage">https://github.com/hendy643/RelicWriter</url>
+  <url type="bugtracker">https://github.com/hendy643/RelicWriter/issues</url>
+  <content_rating type="oars-1.1" />
+  <provides>
+    <binary>relicwriter</binary>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2026-10-24" />
+  </releases>
+</component>

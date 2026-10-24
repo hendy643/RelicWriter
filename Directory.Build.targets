@@ -65,7 +65,7 @@
         </Task>
     </UsingTask>
 
-    <Target Name="SyncVersion" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)version.json')">
+    <Target Name="SyncVersion" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)version.json') And '$(MSBuildProjectExtension)' != '.wixproj'">
         <SyncVersion VersionFile="$(MSBuildThisFileDirectory)version.json" ProjectFile="$(MSBuildProjectFullPath)" Component="$(MSBuildProjectName)">
             <Output TaskParameter="AppVersion" PropertyName="AppVersion" />
             <Output TaskParameter="ComponentVersion" PropertyName="ComponentVersion" />

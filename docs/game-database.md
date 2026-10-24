@@ -23,7 +23,7 @@ Everything the app knows about the game (not about the save format) is in one SQ
 
 ## Tables
 
-`meta` (game_version, max_save_version, created_utc), `enum_default` (type to its first value, what the save leaves out), `record` (TweakDBID hash + name length to record name and in-game display name), `vehicle` (record, sort, atlas, atlas_part), `perk_tree` (tree to the name of its attribute data in the save), `perk` (id, tree, sort, max_level, cost_per_level, display_name), `constant` (for example `official_max_perk_points`), and `local_data`.
+`meta` (game_version, max_save_version, created_utc), `enum_default` (type to its first value, what the save leaves out), `record` (TweakDBID hash + name length to record name and in-game display name), `vehicle` (record, sort, atlas, atlas_part), `perk_tree` (tree to the name of its attribute data in the save), `perk` (id, tree, sort, max_level, cost_per_level, display_name, requires: the perks that must be maxed first, space separated; attribute_points: the attribute value its tier needs), `constant` (for example `official_max_perk_points`), and `local_data`.
 
 **`local_data`** (key, value) holds the user's own values: the game folder (`game_folder`, remembered by `GameLocator.Remember`) and any later settings, read and written through `LocalData`. It exists in the schema migration only; no data migration writes to it (a test checks this), so an update never touches what the user set. It is not part of the in-memory `GameDatabase` snapshot.
 

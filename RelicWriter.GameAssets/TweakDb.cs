@@ -29,7 +29,7 @@ public sealed class TweakDb
     const int ValueSize = sizeof(ulong), SecondaryHashOffset = sizeof(uint), LinkLengthOffset = sizeof(uint);
 
     /// <summary>One file's tables; files are searched newest first so Phantom Liberty can replace a base game flat.</summary>
-    sealed record Tables(FlatTable LocKeys, FlatTable Links, FlatTable Resources, FlatTable CNames, string[] CNamePool, FlatTable Strings, string[] StringPool);
+    sealed record Tables(FlatTable LocKeys, FlatTable Links, FlatTable Resources, FlatTable CNames, string[] CNamePool, FlatTable Strings, string[] StringPool, FlatTable Ints, FlatTable Arrays, int[] ArrayAt);
 
     readonly List<Tables> files = [];
 
@@ -95,6 +95,22 @@ public sealed class TweakDb
         return null;
     }
 
+    /// <summary>The value of an Int32 flat.</summary>
+    public int? Int(ulong flat)
+    {
+        foreach (var f in files)
+            if (f.Ints.Find(flat) is var i and >= 0) return f.Ints.Int(i);
+        return null;
+    }
+
+    /// <summary>The record ids of an array:TweakDBID flat (for example a perk's requiresPerks); null if the flat is not there.</summary>
+    public ulong[]? Links(ulong flat)
+    {
+        foreach (var f in files)
+            if (f.Arrays.Find(flat) is var i and >= 0) return f.Arrays.Ids(f.ArrayAt[f.Arrays.ValueIndex(i)]);
+        return null;
+    }
+
     static string[] ReadStrings(byte[] block)
     {
         // Values: u32 count, then that many length-prefixed strings.
@@ -106,6 +122,20 @@ public sealed class TweakDb
             p += length;
         }
         return pool;
+    }
+
+    // The arrays are one after another, each a varint count (the string length encoding) and that many 8-byte ids, so finding one means walking the ones before it.
+    static int[] ArrayOffsets(byte[] block)
+    {
+        if (block.Length < CountSize) return [];
+        var at = new int[BinaryPrimitives.ReadUInt32LittleEndian(block)];
+        for (int i = 0, p = CountSize; i < at.Length; i++)
+        {
+            at[i] = p;
+            var count = OnScreens.ReadLength(block, ref p);
+            p += count * ValueSize;
+        }
+        return at;
     }
 
     static Tables? Load(string path)
@@ -126,6 +156,7 @@ public sealed class TweakDb
         FlatTable Read(ulong type, out byte[] block)
         {
             var i = types.FindIndex(t => t.Hash == type);
+            if (i < 0) { block = []; return new FlatTable(block, 0); }
             var end = i + 1 < types.Count ? types[i + 1].At : recordsAt;
             fs.Position = types[i].At;
             block = new byte[end - types[i].At];
@@ -139,10 +170,12 @@ public sealed class TweakDb
         var cnames = Read(CNameType, out var cnameBlock);
 
         var strings = Read(StringType, out var stringBlock);
-        return new Tables(locKeys, links, resources, cnames, ReadStrings(cnameBlock), strings, ReadStrings(stringBlock));
+        var ints = Read(Int32Type, out _);
+        var arrays = Read(LinkArrayType, out var arrayBlock);
+        return new Tables(locKeys, links, resources, cnames, ReadStrings(cnameBlock), strings, ReadStrings(stringBlock), ints, arrays, ArrayOffsets(arrayBlock));
     }
 
-    static readonly ulong LocKeyType = Fnv("gamedataLocKeyWrapper"), TweakDbIdType = Fnv("TweakDBID"), ResourceType = Fnv("raRef:CResource"), CNameType = Fnv("CName"), StringType = Fnv("String");
+    static readonly ulong LocKeyType = Fnv("gamedataLocKeyWrapper"), TweakDbIdType = Fnv("TweakDBID"), ResourceType = Fnv("raRef:CResource"), CNameType = Fnv("CName"), StringType = Fnv("String"), Int32Type = Fnv("Int32"), LinkArrayType = Fnv("array:TweakDBID");
 
     static ulong Fnv(string s) => Hashing.Fnv1a64(s);
 
@@ -186,6 +219,17 @@ public sealed class TweakDb
         public uint U32(int key, int offset) => BinaryPrimitives.ReadUInt32LittleEndian(block.AsSpan(At(key, offset)));
 
         public byte Byte(int key, int offset) => block[At(key, offset)];
+
+        public int Int(int key) => BinaryPrimitives.ReadInt32LittleEndian(block.AsSpan(CountSize + ValueIndex(key) * sizeof(int)));
+
+        /// <summary>The ids of the array starting at <paramref name="at"/>.</summary>
+        public ulong[] Ids(int at)
+        {
+            var p = at;
+            var ids = new ulong[OnScreens.ReadLength(block, ref p)];
+            for (var i = 0; i < ids.Length; i++) ids[i] = TweakDb.Id(BinaryPrimitives.ReadUInt32LittleEndian(block.AsSpan(p + i * ValueSize)), block[p + i * ValueSize + LinkLengthOffset]);
+            return ids;
+        }
 
         public ulong U64(int key) => BinaryPrimitives.ReadUInt64LittleEndian(block.AsSpan(At(key, 0)));
     }

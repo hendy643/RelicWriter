@@ -162,7 +162,7 @@ public sealed class GameDatabase
             db.Records.AsNoTracking().ToDictionary(r => ((uint)r.Hash, (byte)r.Length), r => new RecordEntry(r.Name, r.DisplayName)),
             db.Vehicles.AsNoTracking().OrderBy(v => v.Sort).AsEnumerable().Select(v => new VehicleEntry(v.Record, v.Atlas is { } atlas ? unchecked((ulong)atlas) : null, v.AtlasPart)).ToList(),
             db.PerkTrees.AsNoTracking().OrderBy(t => t.Sort).ToDictionary(t => t.Name, t => t.AttributeData),
-            db.Perks.AsNoTracking().OrderBy(p => p.Sort).AsEnumerable().Select(p => new PerkInfo(p.Id, p.Tree, p.MaxLevel, p.CostPerLevel, p.DisplayName)).ToList(),
+            db.Perks.AsNoTracking().OrderBy(p => p.Sort).AsEnumerable().Select(p => new PerkInfo(p.Id, p.Tree, p.MaxLevel, p.CostPerLevel, p.DisplayName, p.Requires, p.AttributePoints)).ToList(),
             db.Constants.AsNoTracking().ToDictionary(c => c.Name, c => c.Value));
     }
 
@@ -186,7 +186,7 @@ public sealed class GameDatabase
             .Select(p => $"INSERT OR REPLACE INTO perk_tree (name, sort, attribute_data) VALUES ({Q(p.t.Key)}, {p.i}, {Q(p.t.Value)});"));
         var oldPerks = previous?.Perks.Select((p, i) => (p, i)).ToDictionary(p => p.p.Id) ?? [];
         s.AddRange(Perks.Select((p, i) => (p, i)).Where(x => !oldPerks.TryGetValue(x.p.Id, out var o) || o.i != x.i || o.p != x.p)
-            .Select(x => $"INSERT OR REPLACE INTO perk (id, tree, sort, max_level, cost_per_level, display_name) VALUES ({Q(x.p.Id)}, {Q(x.p.Tree)}, {x.i}, {x.p.MaxLevel}, {x.p.CostPerLevel}, {Q(x.p.DisplayName)});"));
+            .Select(x => $"INSERT OR REPLACE INTO perk (id, tree, sort, max_level, cost_per_level, display_name, requires, attribute_points) VALUES ({Q(x.p.Id)}, {Q(x.p.Tree)}, {x.i}, {x.p.MaxLevel}, {x.p.CostPerLevel}, {Q(x.p.DisplayName)}, {Q(x.p.Requires)}, {x.p.AttributePoints});"));
         s.AddRange(Constants.Where(k => previous?.Constants.GetValueOrDefault(k.Key, int.MinValue) != k.Value).OrderBy(k => k.Key, StringComparer.Ordinal)
             .Select(k => $"INSERT OR REPLACE INTO constant (name, value) VALUES ({Q(k.Key)}, {k.Value});"));
         if (s.Count == 0 && previous is not null && previous.Info.GameVersion == Info.GameVersion && previous.Info.MaxSaveVersion == Info.MaxSaveVersion) return null;

@@ -8,7 +8,7 @@
             <Border Grid.Column="0" Classes="panel" VerticalAlignment="Top">
                 <StackPanel Spacing="10">
                     <TextBlock Classes="h2" Text="POINTS" />
-                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="Each perk level costs one point, except the three Relic milestone perks, which cost three. Buying or selling a level changes the unspent points to match, so maxing out the perks uses up the points: raise them first to keep some." />
+                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="Each perk level costs one point, except the three Relic milestone perks, which cost three. Buying or selling a level changes the unspent points to match, and a perk can only be bought with enough points, once the perks it needs are maxed and its attribute is high enough (buying raises those for you; lowering an attribute takes perks back)." />
                     <Button Classes="primary" Content="MAX OUT ALL PERKS" Command="{Binding MaxOutAllPerksCommand}" />
                     <Button Classes="primary" Content="POINTS FOR ALL PERKS" Command="{Binding PointsForAllPerksCommand}" />
                     <Button Content="{Binding OfficialMaxText}" Command="{Binding PointsForOfficialMaxCommand}" />
@@ -31,12 +31,13 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid ColumnDefinitions="*,120" Margin="0,0,12,6">
+                                            <Grid ColumnDefinitions="*,140,20" Margin="0,0,12,6">
                                                 <StackPanel VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Title}" FontWeight="Bold" />
                                                     <TextBlock Classes="dim" FontSize="11" Text="{Binding CostText}" />
                                                 </StackPanel>
-                                                <NumericUpDown Grid.Column="1" Value="{Binding Level}" Minimum="0" Maximum="{Binding MaxLevel}" Increment="1" FormatString="0" />
+                                                <Slider Grid.Column="1" Value="{Binding Level}" Minimum="0" Maximum="{Binding MaxLevel}" TickFrequency="1" IsSnapToTickEnabled="True" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Level}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

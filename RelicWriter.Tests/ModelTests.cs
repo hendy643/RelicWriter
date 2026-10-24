@@ -127,6 +127,25 @@ public class ModelTests
         Assert.Equal(relic[1].MaxLevel, last.PerkLevel(relic[1]));
     }
 
+    [Theory, MemberData(nameof(RelicVersions))]
+    public void UnlockedPerksKeepALevelZeroEntryAndSoldPerksTakeTheirDependentsAway(uint version)
+    {
+        var file = SyntheticSave.Read(version);
+        var dev = PlayerDevelopment.Read(file)!;
+        dev.SetPerkLevel(Perk("Espionage_Central_Perk_1_2"), 1); // the synthetic character has the milestone and Perk_1_1 only
+        dev.ApplyTo(file);
+        var bought = PlayerDevelopment.Read(SaveFile.Read(file.Write()))!;
+        // With the milestone bought the game has the perks that need it unlocked, at level 0.
+        Assert.Contains(bought.PerkEntries, e => e.Perk == "Espionage_Central_Perk_1_3" && e.Level == 0);
+
+        bought.SetPerkLevel(Perk("Espionage_Central_Milestone_1"), 0);
+        var file2 = SaveFile.Read(file.Write());
+        bought.ApplyTo(file2);
+        var sold = PlayerDevelopment.Read(SaveFile.Read(file2.Write()))!;
+        Assert.DoesNotContain(sold.PerkEntries, e => e.Perk == "Espionage_Central_Perk_1_3");
+        Assert.Contains(sold.PerkEntries, e => e.Perk == "Espionage_Central_Milestone_1" && e.Level == 0);
+    }
+
     [Fact]
     public void PerkCostsMatchTheGameDataTotals()
     {
@@ -175,5 +194,17 @@ public class ModelTests
             Assert.NotNull(entry.Atlas);
             Assert.False(string.IsNullOrEmpty(entry.AtlasPart));
         });
+    }
+
+    [Fact]
+    public void EveryPerkRequirementIsAPerkOfTheDatabaseAndRelicPerksNeedTheirMilestone()
+    {
+        var ids = Perks.All.Select(p => p.Id).ToHashSet();
+        Assert.All(Perks.All, p => Assert.All(p.RequiredPerks, r => Assert.Contains(r, ids)));
+        Assert.Equal(["Espionage_Central_Milestone_1"], Perks.All.First(p => p.Id == "Espionage_Central_Perk_1_1").RequiredPerks);
+        Assert.Empty(Perks.All.First(p => p.Id == "Espionage_Central_Milestone_1").RequiredPerks);
+        // The attribute value each perk's tier needs, from the game's tier records.
+        foreach (var (id, points) in new[] { ("Body_Central_Perk_1_1", 4), ("Cool_Central_Perk_2_1", 9), ("Cool_Right_Perk_3_1", 15), ("Espionage_Central_Milestone_1", 0) })
+            Assert.Equal(points, Perks.All.First(p => p.Id == id).AttributePoints);
     }
 }

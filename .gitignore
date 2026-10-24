@@ -453,3 +453,10 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/extensions.json
 .claude
+
+# Flatpak build output
+packaging/flatpak/publish/
+packaging/flatpak/build-dir/
+packaging/flatpak/repo/
+packaging/flatpak/.flatpak-builder/
+packaging/flatpak/*.flatpak

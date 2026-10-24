@@ -18,6 +18,7 @@
 
     <PropertyGroup>
         <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>..\RelicWriter\Assets\Icon.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>

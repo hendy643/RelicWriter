@@ -16,6 +16,8 @@
     <File Path="docs/game-data.md" />
     <File Path="docs/game-database.md" />
     <File Path="docs/updates.md" />
+    <File Path="docs/installer.md" />
+    <File Path="docs/flatpak.md" />
     <File Path="README.md" />
   </Folder>
   <Project Path="RelicWriter.Common/RelicWriter.Common.csproj" />
@@ -23,6 +25,9 @@
   <Project Path="RelicWriter.Extractor/RelicWriter.Extractor.csproj" />
   <Project Path="RelicWriter.GameAssets/RelicWriter.GameAssets.csproj" />
   <Project Path="RelicWriter.Generator/RelicWriter.Generator.csproj" />
+  <Project Path="RelicWriter.Installer/RelicWriter.Installer.wixproj">
+    <Build Project="false" />
+  </Project>
   <Project Path="RelicWriter.Model3D/RelicWriter.Model3D.csproj" />
   <Project Path="RelicWriter.Tests/RelicWriter.Tests.csproj" />
   <Project Path="RelicWriter/RelicWriter.csproj" />

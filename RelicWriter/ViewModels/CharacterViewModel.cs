@@ -25,6 +25,8 @@ public partial class AttributeViewModel : ViewModelBase
         this.changed = changed;
     }
 
+    public string Stat => entry.Stat;
+
     public string Title => Titles.GetValueOrDefault(entry.Stat, entry.Stat.ToUpperInvariant());
 
     [ObservableProperty] public partial double Value { get; set; }
