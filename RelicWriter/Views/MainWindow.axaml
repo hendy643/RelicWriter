@@ -4,7 +4,7 @@
         x:Class="RelicWriter.Views.MainWindow"
         Icon="/Assets/Icon.ico"
         Title="{Binding WindowTitle}"
-        Width="1320" Height="860" MinWidth="1000" MinHeight="680"
+        Width="1600" Height="1000" MinWidth="1000" MinHeight="680"
         WindowStartupLocation="CenterScreen">
     <views:MainView />
 </Window>

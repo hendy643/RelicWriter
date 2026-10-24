@@ -1,14 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.CharacterView">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid ColumnDefinitions="300,*,290" ColumnSpacing="16" Margin="0,0,0,24">
 
             <!-- V: portrait, life path, level and street cred, like the top of the in-game character screen -->
-            <Border Grid.Column="0" Classes="panel">
+            <controls:NotchedBorder Grid.Column="0" Classes="panel">
                 <StackPanel Spacing="12">
-                    <Border Width="132" Height="132" BorderBrush="{StaticResource CpYellow}" BorderThickness="2" HorizontalAlignment="Left" Background="{StaticResource CpPanelRaised}">
-                        <TextBlock Text="V" FontSize="84" FontWeight="Black" Foreground="{StaticResource CpYellow}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <Border Width="132" Height="132" BorderBrush="{StaticResource CpCyan}" BorderThickness="2" HorizontalAlignment="Left" Background="{StaticResource CpPanelRaised}">
+                        <TextBlock Text="V" FontSize="84" FontWeight="Black" Foreground="{StaticResource CpCyan}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <TextBlock Classes="h2" Text="LIFE PATH" Margin="0,8,0,0" />
                     <TextBlock Text="{Binding LifePath}" FontSize="22" FontWeight="Bold" />
@@ -23,11 +24,11 @@
                     <TextBlock Classes="big" Text="{Binding StreetCred, StringFormat=N0}" />
                     <NumericUpDown Value="{Binding StreetCred}" Minimum="1" Maximum="50" Increment="1" FormatString="0" IsEnabled="{Binding CanEditStreetCred}" />
                 </StackPanel>
-            </Border>
+            </controls:NotchedBorder>
 
             <!-- Attributes and skills -->
             <StackPanel Grid.Column="1" Spacing="16">
-                <Border Classes="panel">
+                <controls:NotchedBorder Classes="panel">
                     <StackPanel Spacing="12">
                         <TextBlock Classes="h2" Text="ATTRIBUTES" />
                         <ItemsControl ItemsSource="{Binding Attributes}">
@@ -38,20 +39,20 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Classes="card" Margin="0,0,10,0">
+                                    <controls:NotchedBorder Classes="card" Margin="0,0,10,0">
                                         <StackPanel Spacing="4">
                                             <TextBlock Classes="dim" Text="{Binding Title}" FontSize="10" FontWeight="Bold" LetterSpacing="0.5" TextWrapping="Wrap" MinHeight="30" />
                                             <TextBlock Classes="big" Text="{Binding Value, StringFormat=N0}" />
                                             <Slider Minimum="3" Maximum="20" Value="{Binding Value}" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </StackPanel>
-                                    </Border>
+                                    </controls:NotchedBorder>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                </Border>
+                </controls:NotchedBorder>
 
-                <Border Classes="panel">
+                <controls:NotchedBorder Classes="panel">
                     <StackPanel Spacing="12">
                         <TextBlock Classes="h2" Text="SKILLS" />
                         <ItemsControl ItemsSource="{Binding Skills}">
@@ -65,7 +66,7 @@
                                     <Grid ColumnDefinitions="170,*,42" Margin="0,0,24,6">
                                         <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                                         <Slider Grid.Column="1" Minimum="1" Maximum="60" Value="{Binding Value}" TickFrequency="1" IsSnapToTickEnabled="True" />
-                                        <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat=N0}" FontWeight="Bold" Foreground="{StaticResource CpYellow}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat=N0}" FontWeight="Bold" Foreground="{StaticResource CpCyan}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -73,12 +74,12 @@
                         <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
                                    Text="Skill names are the game's internal proficiency names; the in-game display names are not stored in the save." />
                     </StackPanel>
-                </Border>
+                </controls:NotchedBorder>
             </StackPanel>
 
             <!-- Unspent points -->
             <StackPanel Grid.Column="2" Spacing="16">
-                <Border Classes="panel">
+                <controls:NotchedBorder Classes="panel">
                     <StackPanel Spacing="10">
                         <TextBlock Classes="h2" Text="UNSPENT POINTS" />
                         <TextBlock Classes="dim" Text="ATTRIBUTE POINTS" FontSize="11" FontWeight="Bold" LetterSpacing="1.5" Margin="0,6,0,0" />
@@ -88,14 +89,14 @@
                         <TextBlock Classes="dim" Text="RELIC POINTS" FontSize="11" FontWeight="Bold" LetterSpacing="1.5" Margin="0,6,0,0" />
                         <NumericUpDown Value="{Binding RelicPoints}" Minimum="0" Maximum="999" Increment="1" FormatString="0" IsEnabled="{Binding CanEditRelicPoints}" />
                     </StackPanel>
-                </Border>
-                <Border Classes="card">
+                </controls:NotchedBorder>
+                <controls:NotchedBorder Classes="card">
                     <StackPanel Spacing="6">
                         <TextBlock Classes="h2" Text="BEFORE YOU SAVE" />
                         <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
                                    Text="Level, street cred, attributes and skills are changed on their own: experience points are left as they are; perks have their own tab. Loading an edited save in the game has not been tested yet, so keep the backup RelicWriter makes." />
                     </StackPanel>
-                </Border>
+                </controls:NotchedBorder>
             </StackPanel>
         </Grid>
     </ScrollViewer>

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using RelicWriter.ViewModels;
@@ -21,6 +22,14 @@ public partial class MainWindow : Window, IFileDialogs
                 vm.StartUpdateCheck();
                 vm.PropertyChanged += OnViewModelChanged;
             }
+        };
+        // Made for 1080p with the taskbar showing (1040 px usable, about 1000 inside the title bar); on a smaller screen it shrinks to fit.
+        Opened += (_, _) =>
+        {
+            if (Screens.ScreenFromWindow(this) is not { } screen) return;
+            Width = Math.Min(Width, screen.WorkingArea.Width / screen.Scaling - 16);
+            Height = Math.Min(Height, screen.WorkingArea.Height / screen.Scaling - 40);
+            Position = new PixelPoint(screen.WorkingArea.X + (int)((screen.WorkingArea.Width - Width * screen.Scaling) / 2), screen.WorkingArea.Y + (int)((screen.WorkingArea.Height - Height * screen.Scaling) / 2));
         };
         PositionChanged += (_, _) => { if (preview is { IsVisible: true }) preview.PlaceBeside(this); };
         Closed += (_, _) => preview?.CloseForReal();

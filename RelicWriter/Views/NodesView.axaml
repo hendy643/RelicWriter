@@ -1,8 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.NodesView">
     <Grid ColumnDefinitions="*,340" ColumnSpacing="16" Margin="0,0,0,16">
-        <Border Classes="panel">
+        <controls:NotchedBorder Classes="panel">
             <TreeView ItemsSource="{Binding Roots}" SelectedItem="{Binding Selected}">
                 <TreeView.ItemTemplate>
                     <TreeDataTemplate ItemsSource="{Binding Children}">
@@ -13,13 +14,13 @@
                     </TreeDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
-        </Border>
-        <Border Grid.Column="1" Classes="panel" VerticalAlignment="Top">
+        </controls:NotchedBorder>
+        <controls:NotchedBorder Grid.Column="1" Classes="panel" VerticalAlignment="Top">
             <StackPanel Spacing="8" DataContext="{Binding Selected}">
                 <TextBlock Classes="h2" Text="NODE" />
                 <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding Details}" Foreground="{StaticResource CpDim}" TextWrapping="Wrap" />
             </StackPanel>
-        </Border>
+        </controls:NotchedBorder>
     </Grid>
 </UserControl>
