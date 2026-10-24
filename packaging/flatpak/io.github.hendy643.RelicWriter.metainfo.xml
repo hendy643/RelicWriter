@@ -5,7 +5,7 @@
   <summary>Save game editor for Cyberpunk 2077</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <!-- No licence has been chosen for the project yet. -->
-  <project_license>LicenseRef-proprietary</project_license>
+  <project_license>GPL-3.0-only</project_license>
   <developer_name>hendy643</developer_name>
   <description>
     <p>Edits Cyberpunk 2077 and Phantom Liberty save files: character level, attributes, skills, perks and Relic perks, money, inventory, vehicles and face shape. Item, vehicle and perk names are read from your own copy of the game.</p>

@@ -1,5 +1,6 @@
 #!/bin/sh
 # Builds the Flatpak: publishes the app, then packs it with flatpak-builder. Run on Linux from anywhere.
+# With --publish-only it stops after the publish step.
 # Needs the .NET 10 SDK, flatpak-builder and the org.freedesktop.Platform/Sdk 25.08 runtimes (flatpak install flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -13,6 +14,9 @@ dotnet restore "$root/RelicWriter.Desktop/RelicWriter.Desktop.csproj" -r linux-x
 dotnet publish "$root/RelicWriter.Desktop/RelicWriter.Desktop.csproj" --no-restore --self-contained true $props -o "$here/publish"
 # Native symbol files are large and of no use to users.
 find "$here/publish" -name '*.pdb' -delete
+
+# CI publishes in one job and packs in another (see .github/workflows/release.yml).
+[ "${1:-}" = "--publish-only" ] && exit 0
 
 cd "$here"
 flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install build-dir "$app.yml"

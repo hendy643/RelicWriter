@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Installer (WiX 6 MSI, per user, self-contained trimmed app; not in the solution build): `dotnet build RelicWriter.Installer -c Release`, see `docs/installer.md`
 - Flatpak (Linux, self-contained linux-x64 trimmed ReadyToRun): `packaging/flatpak/build.sh`, see `docs/flatpak.md`
 - Icons: `RelicWriter/Assets/Icon.svg` is the master; `powershell -File packaging/icons/make-icons.ps1` (needs Chrome or Edge) renders `Icon.ico`, `Icon.png` and the Linux sizes in `packaging/flatpak/icons/` from it
+- CI and releases: `master` is protected by rulesets (pull requests only, the Build checks must pass, only the owner and maintainers merge); `.github/workflows/build.yml` checks pull requests and `release.yml` (starts when a pull request that changes the version in `version.json` is merged, e.g. from `release/1.0.0` prepared with `packaging/bump-version.ps1`; owner and maintainers only) publishes the MSI, Flatpak and `version.json`; see `docs/releasing.md`
 - Tests: `dotnet test RelicWriter.Tests`. No linting is set up.
 
 ## Architecture
@@ -34,3 +35,7 @@ Avalonia 12 / .NET 10 desktop app (Windows and Linux only; Android, iOS and Brow
 - Versions are only edited in `version.json` (root: app, per-project components, and `database` = the save version the data was built for); the `SyncVersion` task in `Directory.Build.targets` writes them into the project files and manifests before every build. `Common/Updates/UpdateChecker` + `MainViewModel.StartUpdateCheck` look for a newer GitHub release (one with a `version.json` asset) and run its installer; see `docs/updates.md` (not yet tried against a real release).
 - NuGet versions are centralized in `Directory.Packages.props`; keep all Avalonia packages on the same version.
 - `AvaloniaUI.DiagnosticsSupport` and `AttachDeveloperTools()` are Debug-only.
+
+## License
+
+GPL-3.0-only (`LICENSE`; SPDX `GPL-3.0-only`). It covers the code written for this project. It does not cover the game text in `Database/*.sql` and `gamedata.db`, which belongs to CD PROJEKT RED. Don't copy code from WolvenKit (GPL-3.0, its own terms) or other projects without checking their licenses.

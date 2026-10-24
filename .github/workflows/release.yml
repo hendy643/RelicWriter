@@ -1,0 +1,169 @@
+name: Release
+
+# A release is made by merging a pull request from a branch such as release/1.0.0 whose only change is the new version (run packaging/bump-version.ps1 there,
+# which writes version.json, the Flatpak metainfo and, through a build, the project files and manifests). Merging it changes version.json on master, which starts
+# this workflow; it builds that commit and publishes the release and its tag vX.Y.Z. Only the owner and maintainers can merge (the rulesets),
+# and "prepare" checks the role again. It can also be started by hand (Actions > Release > Run workflow) on
+# master, for a release that failed. It never commits, so nothing needs to get around the rules on master. See docs/releasing.md.
+on:
+  push:
+    branches: [master]
+    paths: [version.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: release
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.version.outputs.release }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Read the version
+        id: version
+        run: |
+          v=$(jq -r .app version.json)
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then echo "'$v' is not x.y.z or x.y.z-pre.release."; exit 1; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$v" > /dev/null; then
+            # A merge that changed version.json for another reason (the database number, say) is not a release.
+            if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then echo "Tag v$v already exists."; exit 1; fi
+            echo "Tag v$v exists: nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  prepare:
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    runs-on: windows-latest
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Only the owner and maintainers may release, and only from master
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/master" ]; then echo "Releases are made from master only (this run is on $GITHUB_REF)."; exit 1; fi
+          role=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$ACTOR/permission" --jq .role_name)
+          echo "$ACTOR has the role: $role"
+          case "$role" in
+            admin|maintain) ;;
+            *) echo "$ACTOR is not the owner or a maintainer of $GITHUB_REPOSITORY."; exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: The files carry the version
+        shell: pwsh
+        run: |
+          $v = '${{ needs.check.outputs.version }}'
+          if ((Get-Content packaging/flatpak/io.github.hendy643.RelicWriter.metainfo.xml -Raw) -notmatch "<release version=`"$([regex]::Escape($v))`"") { throw "The Flatpak metainfo has no release entry for $v (packaging/bump-version.ps1 adds it)." }
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build RelicWriter.slnx -c Release
+      - run: dotnet test RelicWriter.Tests -c Release --no-build
+      - name: The project files match version.json
+        run: git diff --exit-code -- '*.csproj' '*.manifest' '*.appxmanifest'
+      - name: Remember the commit
+        id: commit
+        shell: pwsh
+        run: '"sha=$(git rev-parse HEAD)" >> $env:GITHUB_OUTPUT'
+
+  windows:
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build RelicWriter.Installer -c Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: RelicWriter.Installer/bin/Release/RelicWriter.msi
+
+  linux-publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      # Self-contained linux-x64, trimmed, ReadyToRun (see packaging/flatpak/build.sh).
+      - run: packaging/flatpak/build.sh --publish-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-publish
+          path: packaging/flatpak/publish
+          if-no-files-found: error
+
+  flatpak:
+    needs: [prepare, linux-publish]
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-publish
+          path: packaging/flatpak/publish
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: RelicWriter.flatpak
+          manifest-path: packaging/flatpak/io.github.hendy643.RelicWriter.yml
+          cache-key: flatpak-${{ needs.prepare.outputs.sha }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: RelicWriter.flatpak
+
+  publish:
+    needs: [check, prepare, windows, flatpak]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Name the files
+        run: |
+          v='${{ needs.check.outputs.version }}'
+          mkdir release
+          cp artifacts/windows/RelicWriter.msi "release/RelicWriter-$v-win-x64.msi"
+          cp artifacts/flatpak/RelicWriter.flatpak "release/RelicWriter-$v-linux-x86_64.flatpak"
+          # The updater looks for this file among the release's files; it is the version.json of the released commit.
+          cp version.json release/version.json
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check.outputs.version }}
+          target_commitish: ${{ needs.prepare.outputs.sha }}
+          name: Relic Writer ${{ needs.check.outputs.version }}
+          prerelease: ${{ contains(needs.check.outputs.version, '-') }}
+          generate_release_notes: true
+          files: release/*

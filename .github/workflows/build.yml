@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet build RelicWriter.slnx -c Release
+      - run: dotnet test RelicWriter.Tests -c Release --no-build
+      # The build writes version.json's numbers into the project files and manifests; if that changes anything, the committed files were out of date.
+      - name: Versions in the project files match version.json
+        shell: bash
+        run: git diff --exit-code -- '*.csproj' '*.manifest' '*.appxmanifest'

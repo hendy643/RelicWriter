@@ -18,6 +18,7 @@
     <File Path="docs/updates.md" />
     <File Path="docs/installer.md" />
     <File Path="docs/flatpak.md" />
+    <File Path="docs/releasing.md" />
     <File Path="README.md" />
   </Folder>
   <Project Path="RelicWriter.Common/RelicWriter.Common.csproj" />
