@@ -11,13 +11,13 @@
     <Application.Resources>
         <ResourceDictionary>
             <!-- Fluent derives focus rings, selections and sliders from these -->
-            <Color x:Key="SystemAccentColor">#FCEE09</Color>
-            <Color x:Key="SystemAccentColorLight1">#FFF54D</Color>
-            <Color x:Key="SystemAccentColorLight2">#FFF87F</Color>
-            <Color x:Key="SystemAccentColorLight3">#FFFBB0</Color>
-            <Color x:Key="SystemAccentColorDark1">#D6CA00</Color>
-            <Color x:Key="SystemAccentColorDark2">#A89F00</Color>
-            <Color x:Key="SystemAccentColorDark3">#7A7400</Color>
+            <Color x:Key="SystemAccentColor">#4FF1F6</Color>
+            <Color x:Key="SystemAccentColorLight1">#7FF6FA</Color>
+            <Color x:Key="SystemAccentColorLight2">#A5F9FC</Color>
+            <Color x:Key="SystemAccentColorLight3">#C9FCFD</Color>
+            <Color x:Key="SystemAccentColorDark1">#2FC8CD</Color>
+            <Color x:Key="SystemAccentColorDark2">#1F9A9E</Color>
+            <Color x:Key="SystemAccentColorDark3">#146E71</Color>
         </ResourceDictionary>
     </Application.Resources>
 

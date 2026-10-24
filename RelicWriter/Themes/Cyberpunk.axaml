@@ -1,18 +1,25 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:RelicWriter.Controls">
 
     <Styles.Resources>
         <Color x:Key="CpBackgroundColor">#07080C</Color>
-        <Color x:Key="CpPanelColor">#10131A</Color>
-        <Color x:Key="CpPanelRaisedColor">#171B25</Color>
-        <Color x:Key="CpLineColor">#2B3142</Color>
+        <Color x:Key="CpPanelColor">#D90D1019</Color>
+        <Color x:Key="CpPanelRaisedColor">#151A28</Color>
+        <Color x:Key="CpLineColor">#5C2430</Color>
         <Color x:Key="CpYellowColor">#FCEE09</Color>
-        <Color x:Key="CpCyanColor">#19F3F7</Color>
-        <Color x:Key="CpRedColor">#FF3B5C</Color>
+        <Color x:Key="CpCyanColor">#4FF1F6</Color>
+        <Color x:Key="CpRedColor">#E8454F</Color>
         <Color x:Key="CpTextColor">#EEF0F7</Color>
-        <Color x:Key="CpDimColor">#8991AB</Color>
+        <Color x:Key="CpDimColor">#8C93A8</Color>
 
         <SolidColorBrush x:Key="CpBackground" Color="{StaticResource CpBackgroundColor}" />
+        <!-- The window ground: maroon glow at the top like the game's menus, fading to near black -->
+        <LinearGradientBrush x:Key="CpWindow" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#2E0C14" />
+            <GradientStop Offset="0.35" Color="#14090F" />
+            <GradientStop Offset="1" Color="#07080C" />
+        </LinearGradientBrush>
         <SolidColorBrush x:Key="CpPanel" Color="{StaticResource CpPanelColor}" />
         <SolidColorBrush x:Key="CpPanelRaised" Color="{StaticResource CpPanelRaisedColor}" />
         <SolidColorBrush x:Key="CpLine" Color="{StaticResource CpLineColor}" />
@@ -24,9 +31,11 @@
     </Styles.Resources>
 
     <Style Selector="Window">
-        <Setter Property="Background" Value="{StaticResource CpBackground}" />
+        <Setter Property="Background" Value="{StaticResource CpWindow}" />
         <Setter Property="Foreground" Value="{StaticResource CpText}" />
-        <Setter Property="FontSize" Value="14" />
+        <!-- Rajdhani (bundled, SIL OFL, see Assets/Fonts/OFL.txt) is the game's condensed type; it runs small, so the sizes are a step up -->
+        <Setter Property="FontFamily" Value="avares://RelicWriter/Assets/Fonts#Rajdhani" />
+        <Setter Property="FontSize" Value="16" />
     </Style>
 
     <!-- Panels: flat, hard-edged, with an accent edge like the game's cards -->
@@ -36,9 +45,21 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="18" />
     </Style>
+    <Style Selector="controls|NotchedBorder.panel">
+        <Setter Property="Background" Value="{StaticResource CpPanel}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="18" />
+    </Style>
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{StaticResource CpPanelRaised}" />
-        <Setter Property="BorderBrush" Value="{StaticResource CpYellow}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpRed}" />
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <Setter Property="Padding" Value="16,14" />
+    </Style>
+    <Style Selector="controls|NotchedBorder.card">
+        <Setter Property="Background" Value="{StaticResource CpPanelRaised}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpRed}" />
         <Setter Property="BorderThickness" Value="3,0,0,0" />
         <Setter Property="Padding" Value="16,14" />
     </Style>
@@ -66,22 +87,29 @@
     <Style Selector="TextBlock.huge">
         <Setter Property="FontSize" Value="72" />
         <Setter Property="FontWeight" Value="Black" />
-        <Setter Property="Foreground" Value="{StaticResource CpYellow}" />
+        <Setter Property="Foreground" Value="{StaticResource CpCyan}" />
     </Style>
 
-    <!-- Tabs -->
+    <!-- Tabs: the game's top navigation, red capitals with a line under each, cyan for the open one -->
     <Style Selector="TabControl">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="0,14,0,0" />
+        <Setter Property="Padding" Value="0,8,0,0" />
     </Style>
     <Style Selector="TabItem">
-        <Setter Property="FontSize" Value="14" />
-        <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="Padding" Value="22,10" />
-        <Setter Property="Foreground" Value="{StaticResource CpDim}" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Padding" Value="20,8" />
+        <Setter Property="Margin" Value="0,0,4,0" />
+        <Setter Property="Foreground" Value="{StaticResource CpRed}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+    </Style>
+    <Style Selector="TabItem /template/ Rectangle#PillRect">
+        <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector="TabItem:selected">
-        <Setter Property="Foreground" Value="{StaticResource CpYellow}" />
+        <Setter Property="Foreground" Value="{StaticResource CpCyan}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpCyan}" />
     </Style>
     <Style Selector="TabItem:pointerover">
         <Setter Property="Foreground" Value="{StaticResource CpCyan}" />
@@ -89,12 +117,18 @@
 
     <!-- Buttons -->
     <Style Selector="Button">
-        <Setter Property="Background" Value="{StaticResource CpPanelRaised}" />
-        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource CpRed}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpRed}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="0" />
-        <Setter Property="Padding" Value="18,8" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Padding" Value="18,7" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#1A0C14" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpCyan}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource CpCyan}" />
     </Style>
     <Style Selector="Button.primary">
         <Setter Property="Background" Value="{StaticResource CpYellow}" />
@@ -127,7 +161,54 @@
         <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
     </Style>
     <Style Selector="Slider">
-        <Setter Property="Foreground" Value="{StaticResource CpYellow}" />
+        <Setter Property="Foreground" Value="{StaticResource CpCyan}" />
+    </Style>
+
+    <!-- Perk tree: octagons that fill amber when bought (blue in the Relic tree), joined by lines that light up from a bought perk -->
+    <Style Selector="Polygon.perk">
+        <Setter Property="Fill" Value="#0B1220" />
+        <Setter Property="Stroke" Value="#3A4766" />
+        <Setter Property="StrokeThickness" Value="2" />
+    </Style>
+    <Style Selector="Panel.node:pointerover Polygon.perk">
+        <Setter Property="Stroke" Value="{StaticResource CpCyan}" />
+    </Style>
+    <Style Selector="Polygon.perk.bought">
+        <Setter Property="Fill" Value="#3A2C0B" />
+        <Setter Property="Stroke" Value="#FFC83A" />
+    </Style>
+    <Style Selector="Polygon.perk.maxed">
+        <Setter Property="Fill" Value="#6B500F" />
+    </Style>
+    <Style Selector="Polygon.perk.relic.bought">
+        <Setter Property="Fill" Value="#101F55" />
+        <Setter Property="Stroke" Value="#4F7BFF" />
+    </Style>
+    <Style Selector="Polygon.perk.relic.maxed">
+        <Setter Property="Fill" Value="#1B338F" />
+    </Style>
+    <Style Selector="TextBlock.perklabel">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="MaxLines" Value="2" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="LineHeight" Value="14" />
+        <Setter Property="Foreground" Value="{StaticResource CpDim}" />
+    </Style>
+    <Style Selector="TextBlock.perklabel.bought">
+        <Setter Property="Foreground" Value="{StaticResource CpText}" />
+    </Style>
+    <Style Selector="Polyline.link">
+        <Setter Property="Stroke" Value="#2A3350" />
+        <Setter Property="StrokeThickness" Value="2" />
+    </Style>
+    <Style Selector="Polyline.link.on">
+        <Setter Property="Stroke" Value="#B8892A" />
+    </Style>
+    <Style Selector="Polyline.link.relic.on">
+        <Setter Property="Stroke" Value="#3A5FCC" />
     </Style>
 
     <!-- Inventory tiles -->

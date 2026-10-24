@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.VehiclesView">
     <Grid RowDefinitions="Auto,*" RowSpacing="16" Margin="0,0,0,16">
 
-        <Border Classes="panel">
+        <controls:NotchedBorder Classes="panel">
             <Grid ColumnDefinitions="*,240,Auto" ColumnSpacing="20">
                 <StackPanel VerticalAlignment="Center" Spacing="2">
                     <TextBlock Classes="h2" Text="GARAGE" />
@@ -15,9 +16,9 @@
                 </StackPanel>
                 <Button Grid.Column="2" Classes="primary" Content="UNLOCK ALL VEHICLES" Command="{Binding UnlockAllCommand}" IsEnabled="{Binding CanEdit}" VerticalAlignment="Bottom" Height="36" />
             </Grid>
-        </Border>
+        </controls:NotchedBorder>
 
-        <Border Grid.Row="1" Classes="panel">
+        <controls:NotchedBorder Grid.Row="1" Classes="panel">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Visible}">
                     <ItemsControl.ItemsPanel>
@@ -54,6 +55,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-        </Border>
+        </controls:NotchedBorder>
     </Grid>
 </UserControl>
