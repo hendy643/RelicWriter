@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Installer (WiX 6 MSI, per user, self-contained trimmed app; not in the solution build): `dotnet build RelicWriter.Installer -c Release`, see `docs/installer.md`
 - Flatpak (Linux, self-contained linux-x64 trimmed ReadyToRun): `packaging/flatpak/build.sh`, see `docs/flatpak.md`
 - Icons: `RelicWriter/Assets/Icon.svg` is the master; `powershell -File packaging/icons/make-icons.ps1` (needs Chrome or Edge) renders `Icon.ico`, `Icon.png` and the Linux sizes in `packaging/flatpak/icons/` from it
-- CI and releases: `master` is protected by rulesets (pull requests only, the Build checks must pass, only the owner and maintainers merge); `.github/workflows/build.yml` checks pull requests and `release.yml` (starts when a pull request that changes the version in `version.json` is merged, e.g. from `release/1.0.0` prepared with `packaging/bump-version.ps1`; owner and maintainers only) publishes the MSI, Flatpak and `version.json`; see `docs/releasing.md`
+- CI and releases: `master` is protected by rulesets (pull requests only, the Build checks must pass, only the owner and maintainers merge); `.github/workflows/build.yml` checks pull requests and `release.yml` (starts when a pull request that changes the version in `version.json` is merged, e.g. from `release/1.0.0` prepared with `packaging/bump-version.ps1`, or all of it with `packaging/release.ps1 <version>`; owner and maintainers only) publishes the MSI, Flatpak and `version.json`; see `docs/releasing.md`
 - Tests: `dotnet test RelicWriter.Tests`. No linting is set up.
 
 ## Architecture
