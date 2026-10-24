@@ -11,6 +11,15 @@ function Step([scriptblock]$Command) {
     if ($LASTEXITCODE -ne 0) { throw "Failed: $Command" }
 }
 
+# The checks start a few seconds after a pull request is opened; wait for them to be reported, then for them to finish.
+function WaitForChecks {
+    for ($i = 0; $i -lt 36; $i++) {
+        if ("$(gh pr checks $branch 2>&1)" -notmatch 'no checks reported') { break }
+        Start-Sleep -Seconds 5
+    }
+    Step { gh pr checks $branch --watch }
+}
+
 Push-Location (Resolve-Path (Join-Path $PSScriptRoot '..'))
 try {
     if (git status --porcelain) { throw 'The working tree has uncommitted changes.' }
@@ -28,13 +37,12 @@ try {
     # Into master: merging changes version.json there, which starts the Release workflow.
     # --admin is the "bypass rules" choice the ruleset needs from the owner or a maintainer to merge at all.
     Step { gh pr create --base master --head $branch --title "Release $Version" --body "Release $Version" }
-    Step { gh pr checks $branch --watch }
+    WaitForChecks
     Step { gh pr merge $branch --merge --admin }
 
-    # Back into develop. Its pull request needs the checks too, and they start a moment after it is opened.
+    # Back into develop.
     Step { gh pr create --base develop --head $branch --title "Merge release $Version into develop" --body "Back-merge of the version change." }
-    Start-Sleep -Seconds 20
-    Step { gh pr checks $branch --watch }
+    WaitForChecks
     Step { gh pr merge $branch --merge --admin --delete-branch }
 
     Step { git checkout develop }
