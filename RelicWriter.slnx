@@ -1,0 +1,29 @@
+<Solution>
+  <Folder Name="/Docs/">
+    <File Path="CLAUDE.md" />
+    <File Path="docs/save-format.md" />
+    <File Path="docs/save-versions.md" />
+    <File Path="docs/save-nodes.md" />
+    <File Path="docs/save-node-formats.md" />
+    <File Path="docs/save-system-blobs.md" />
+    <File Path="docs/save-property-streams.md" />
+    <File Path="docs/save-rtti.md" />
+    <File Path="docs/save-node-specs.md" />
+    <File Path="docs/save-spec.xml" />
+    <File Path="docs/save-node-instances.md" />
+    <File Path="docs/references.md" />
+    <File Path="docs/cyberpunk_2077_patches_save_files_mapping.md" />
+    <File Path="docs/game-data.md" />
+    <File Path="docs/game-database.md" />
+    <File Path="docs/updates.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="RelicWriter.Common/RelicWriter.Common.csproj" />
+  <Project Path="RelicWriter.Desktop/RelicWriter.Desktop.csproj" />
+  <Project Path="RelicWriter.Extractor/RelicWriter.Extractor.csproj" />
+  <Project Path="RelicWriter.GameAssets/RelicWriter.GameAssets.csproj" />
+  <Project Path="RelicWriter.Generator/RelicWriter.Generator.csproj" />
+  <Project Path="RelicWriter.Model3D/RelicWriter.Model3D.csproj" />
+  <Project Path="RelicWriter.Tests/RelicWriter.Tests.csproj" />
+  <Project Path="RelicWriter/RelicWriter.csproj" />
+</Solution>

@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="RelicWriter.Views.PerksView">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid ColumnDefinitions="300,*" ColumnSpacing="16" Margin="0,0,0,24">
+
+            <!-- Points: buying a level takes its cost from here -->
+            <Border Grid.Column="0" Classes="panel" VerticalAlignment="Top">
+                <StackPanel Spacing="10">
+                    <TextBlock Classes="h2" Text="POINTS" />
+                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="Each perk level costs one point, except the three Relic milestone perks, which cost three. Buying or selling a level changes the unspent points to match, so maxing out the perks uses up the points: raise them first to keep some." />
+                    <Button Classes="primary" Content="MAX OUT ALL PERKS" Command="{Binding MaxOutAllPerksCommand}" />
+                    <Button Classes="primary" Content="POINTS FOR ALL PERKS" Command="{Binding PointsForAllPerksCommand}" />
+                    <Button Content="{Binding OfficialMaxText}" Command="{Binding PointsForOfficialMaxCommand}" />
+                    <Button Classes="primary" Content="POINTS FOR ALL RELIC PERKS" Command="{Binding PointsForAllRelicPerksCommand}" />
+                    <TextBlock Classes="dim" TextWrapping="Wrap" FontSize="12" Text="Official max is what a normal game with Phantom Liberty can earn: 59 from levelling, 10 from skills and 13 from Perk Shards. Perks must be bought in the game's order; an edited tree has not been loaded in the game yet." />
+                </StackPanel>
+            </Border>
+
+            <ItemsControl Grid.Column="1" ItemsSource="{Binding Trees}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Classes="panel" Margin="0,0,0,16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Classes="h2" Text="{Binding Title}" />
+                                <ItemsControl ItemsSource="{Binding Perks}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="2" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnDefinitions="*,120" Margin="0,0,12,6">
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" />
+                                                    <TextBlock Classes="dim" FontSize="11" Text="{Binding CostText}" />
+                                                </StackPanel>
+                                                <NumericUpDown Grid.Column="1" Value="{Binding Level}" Minimum="0" Maximum="{Binding MaxLevel}" Increment="1" FormatString="0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="RelicWriter.Views.AppearanceView">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid ColumnDefinitions="360,*" ColumnSpacing="16" Margin="0,0,0,24">
+
+            <!-- Face shape: the creator's preset slots -->
+            <Border Grid.Column="0" Classes="panel" VerticalAlignment="Top">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="h2" Text="FACE SHAPE" />
+                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="Each slot is a preset from the character creator. Presets outside the ones your game offers are not checked." />
+                    <ItemsControl ItemsSource="{Binding FaceShape}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,140" Margin="0,0,0,8">
+                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontWeight="Bold" />
+                                    <NumericUpDown Grid.Column="1" Value="{Binding Value}" Minimum="1" Maximum="99" Increment="1" FormatString="0" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="dim" Text="This save has no face presets." IsVisible="{Binding !HasFaceShape}" />
+
+                    <Rectangle Height="1" Fill="{StaticResource CpLine}" Margin="0,8" />
+                    <TextBlock Classes="h2" Text="GAME FILES" />
+                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="{Binding GameFolderText}" />
+                </StackPanel>
+            </Border>
+
+            <!-- What the creator filled in, as stored in the save -->
+            <Border Grid.Column="1" Classes="panel" VerticalAlignment="Top">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="h2" Text="LOOK" />
+                    <TextBlock Classes="dim" TextWrapping="Wrap" Text="Skin, hair, eyes, tattoos, makeup and cyberware as saved. Changing these needs the creator's option lists from the game files, which are not read yet." />
+                    <ItemsControl ItemsSource="{Binding Parts}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="card" Margin="0,0,10,10">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Classes="dim" Text="{Binding Title}" FontSize="10" FontWeight="Bold" />
+                                        <TextBlock Text="{Binding Value}" FontSize="16" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

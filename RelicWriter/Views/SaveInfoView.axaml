@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="RelicWriter.Views.SaveInfoView">
+    <Border Classes="panel" VerticalAlignment="Top" Margin="0,0,0,16">
+        <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="260,*" Margin="0,6">
+                        <TextBlock Classes="dim" Text="{Binding Label}" FontSize="11" FontWeight="Bold" LetterSpacing="1.5" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Border>
+</UserControl>

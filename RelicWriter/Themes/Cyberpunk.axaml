@@ -1,0 +1,173 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Styles.Resources>
+        <Color x:Key="CpBackgroundColor">#07080C</Color>
+        <Color x:Key="CpPanelColor">#10131A</Color>
+        <Color x:Key="CpPanelRaisedColor">#171B25</Color>
+        <Color x:Key="CpLineColor">#2B3142</Color>
+        <Color x:Key="CpYellowColor">#FCEE09</Color>
+        <Color x:Key="CpCyanColor">#19F3F7</Color>
+        <Color x:Key="CpRedColor">#FF3B5C</Color>
+        <Color x:Key="CpTextColor">#EEF0F7</Color>
+        <Color x:Key="CpDimColor">#8991AB</Color>
+
+        <SolidColorBrush x:Key="CpBackground" Color="{StaticResource CpBackgroundColor}" />
+        <SolidColorBrush x:Key="CpPanel" Color="{StaticResource CpPanelColor}" />
+        <SolidColorBrush x:Key="CpPanelRaised" Color="{StaticResource CpPanelRaisedColor}" />
+        <SolidColorBrush x:Key="CpLine" Color="{StaticResource CpLineColor}" />
+        <SolidColorBrush x:Key="CpYellow" Color="{StaticResource CpYellowColor}" />
+        <SolidColorBrush x:Key="CpCyan" Color="{StaticResource CpCyanColor}" />
+        <SolidColorBrush x:Key="CpRed" Color="{StaticResource CpRedColor}" />
+        <SolidColorBrush x:Key="CpText" Color="{StaticResource CpTextColor}" />
+        <SolidColorBrush x:Key="CpDim" Color="{StaticResource CpDimColor}" />
+    </Styles.Resources>
+
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource CpBackground}" />
+        <Setter Property="Foreground" Value="{StaticResource CpText}" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <!-- Panels: flat, hard-edged, with an accent edge like the game's cards -->
+    <Style Selector="Border.panel">
+        <Setter Property="Background" Value="{StaticResource CpPanel}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="18" />
+    </Style>
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{StaticResource CpPanelRaised}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpYellow}" />
+        <Setter Property="BorderThickness" Value="3,0,0,0" />
+        <Setter Property="Padding" Value="16,14" />
+    </Style>
+
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontWeight" Value="Black" />
+        <Setter Property="LetterSpacing" Value="3" />
+        <Setter Property="Foreground" Value="{StaticResource CpYellow}" />
+    </Style>
+    <Style Selector="TextBlock.h2">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="2.5" />
+        <Setter Property="Foreground" Value="{StaticResource CpCyan}" />
+    </Style>
+    <Style Selector="TextBlock.dim">
+        <Setter Property="Foreground" Value="{StaticResource CpDim}" />
+    </Style>
+    <Style Selector="TextBlock.big">
+        <Setter Property="FontSize" Value="44" />
+        <Setter Property="FontWeight" Value="Black" />
+        <Setter Property="Foreground" Value="{StaticResource CpText}" />
+    </Style>
+    <Style Selector="TextBlock.huge">
+        <Setter Property="FontSize" Value="72" />
+        <Setter Property="FontWeight" Value="Black" />
+        <Setter Property="Foreground" Value="{StaticResource CpYellow}" />
+    </Style>
+
+    <!-- Tabs -->
+    <Style Selector="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="0,14,0,0" />
+    </Style>
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Padding" Value="22,10" />
+        <Setter Property="Foreground" Value="{StaticResource CpDim}" />
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{StaticResource CpYellow}" />
+    </Style>
+    <Style Selector="TabItem:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource CpCyan}" />
+    </Style>
+
+    <!-- Buttons -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{StaticResource CpPanelRaised}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="18,8" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{StaticResource CpYellow}" />
+        <Setter Property="Foreground" Value="#000000" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpYellow}" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource CpCyan}" />
+        <Setter Property="Foreground" Value="#000000" />
+    </Style>
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#4A4710" />
+        <Setter Property="Foreground" Value="#8C8730" />
+    </Style>
+
+    <!-- Inputs -->
+    <Style Selector="TextBox">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="{StaticResource CpBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+    </Style>
+    <Style Selector="NumericUpDown">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="{StaticResource CpBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="{StaticResource CpBackground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+    </Style>
+    <Style Selector="Slider">
+        <Setter Property="Foreground" Value="{StaticResource CpYellow}" />
+    </Style>
+
+    <!-- Inventory tiles -->
+    <Style Selector="ListBox.tiles">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+    </Style>
+    <Style Selector="ListBox.tiles ListBoxItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="Background" Value="{StaticResource CpPanelRaised}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="ListBox.tiles ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#202637" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpCyan}" />
+    </Style>
+    <Style Selector="ListBox.tiles ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#2A2A08" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpYellow}" />
+    </Style>
+
+    <!-- Vehicle tiles: a toggle that is ticked when the vehicle is unlocked -->
+    <Style Selector="ToggleButton.vehicle">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="{StaticResource CpPanelRaised}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpLine}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="ToggleButton.vehicle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#202637" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpCyan}" />
+    </Style>
+    <Style Selector="ToggleButton.vehicle:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#2A2A08" />
+        <Setter Property="BorderBrush" Value="{StaticResource CpYellow}" />
+    </Style>
+</Styles>

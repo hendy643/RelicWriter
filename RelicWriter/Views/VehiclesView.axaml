@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="RelicWriter.Views.VehiclesView">
+    <Grid RowDefinitions="Auto,*" RowSpacing="16" Margin="0,0,0,16">
+
+        <Border Classes="panel">
+            <Grid ColumnDefinitions="*,240,Auto" ColumnSpacing="20">
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Classes="h2" Text="GARAGE" />
+                    <TextBlock Classes="big" Text="{Binding Summary}" FontSize="22" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Classes="h2" Text="SEARCH" />
+                    <TextBox Text="{Binding Search}" MaxLength="32" PlaceholderText="Maker or model" />
+                </StackPanel>
+                <Button Grid.Column="2" Classes="primary" Content="UNLOCK ALL VEHICLES" Command="{Binding UnlockAllCommand}" IsEnabled="{Binding CanEdit}" VerticalAlignment="Bottom" Height="36" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Classes="panel">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Visible}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ToggleButton Classes="vehicle" IsChecked="{Binding IsUnlocked}" IsEnabled="{Binding CanEdit}" Width="176">
+                                <StackPanel Spacing="0">
+                                    <Border Height="84" Background="#0B0E15">
+                                        <Panel>
+                                            <Image Source="{Binding Thumbnail}" IsVisible="{Binding HasThumbnail}" Stretch="UniformToFill" />
+                                            <!-- Placeholder drawn glyph when no picture is available -->
+                                            <Viewbox Width="72" Height="48" IsVisible="{Binding !HasThumbnail}">
+                                                <Panel>
+                                                    <Path IsVisible="{Binding !IsBike}" Stroke="{StaticResource CpDim}" StrokeThickness="1.5" StrokeJoin="Round"
+                                                          Data="M2,16 L5,9 Q6,6 10,6 L21,6 Q25,6 27,9 L31,15 L34,16 L34,20 L31,20 A3,3 0 0 1 25,20 L11,20 A3,3 0 0 1 5,20 L2,20 Z" />
+                                                    <Path IsVisible="{Binding IsBike}" Stroke="{StaticResource CpDim}" StrokeThickness="1.5" StrokeJoin="Round"
+                                                          Data="M2,17 A5,5 0 1 0 12,17 A5,5 0 1 0 2,17 M24,17 A5,5 0 1 0 34,17 A5,5 0 1 0 24,17 M7,17 L15,8 L23,8 L29,17 M15,8 L13,5 L18,5" />
+                                                </Panel>
+                                            </Viewbox>
+                                            <TextBlock Text="✓" FontSize="18" FontWeight="Black" Foreground="{StaticResource CpYellow}" Margin="8,4" HorizontalAlignment="Right" VerticalAlignment="Top" IsVisible="{Binding IsUnlocked}" />
+                                        </Panel>
+                                    </Border>
+                                    <StackPanel Margin="10,8,10,10" Spacing="2">
+                                        <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="12" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" MinHeight="32" />
+                                        <TextBlock Classes="dim" Text="{Binding Subtitle}" FontSize="10" LetterSpacing="1.5" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </ToggleButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

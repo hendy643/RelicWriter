@@ -1,0 +1,28 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:RelicWriter"
+             x:Class="RelicWriter.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- Fluent derives focus rings, selections and sliders from these -->
+            <Color x:Key="SystemAccentColor">#FCEE09</Color>
+            <Color x:Key="SystemAccentColorLight1">#FFF54D</Color>
+            <Color x:Key="SystemAccentColorLight2">#FFF87F</Color>
+            <Color x:Key="SystemAccentColorLight3">#FFFBB0</Color>
+            <Color x:Key="SystemAccentColorDark1">#D6CA00</Color>
+            <Color x:Key="SystemAccentColorDark2">#A89F00</Color>
+            <Color x:Key="SystemAccentColorDark3">#7A7400</Color>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="/Themes/Cyberpunk.axaml" />
+    </Application.Styles>
+</Application>

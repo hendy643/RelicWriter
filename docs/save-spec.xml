@@ -1,0 +1,2918 @@
+<?xml version='1.0' encoding='utf-8'?>
+<saveSpec specFormat="1" game="Cyberpunk 2077 and Phantom Liberty" gameBuild="2.5" exe="Cyberpunk2077.exe product version 2.5, file version 3.0.5813403, 66,704,848 bytes" coverage="all save versions seen: 193, 224, 254, 261, 263, 269, 277 (patch 1.04, 1.6, 2.01, 2.1, 2.12, 2.31, 2.5)">
+  <note>Complete record of the Cyberpunk 2077 save format as understood by the RelicWriter project: container, versions, reusable types, shared formats, and the layout and availability of every node name seen. Status values: verified (the layout consumed every byte of every instance in the local saves), partial (some bytes undecoded), untested (read from the game or reference tools, no local save exercises it), open (unknown). Layouts of nodes whose names also appear in other versions carry version gates (when="v &gt;= N") so one entry covers all versions.</note>
+  <conventions>
+    <rule>All integers are little-endian. Node layouts exclude the leading u32 node id; the layout of a node is the bytes after the id up to the first child (&lt;fields&gt;), and the bytes after the last child (&lt;trailing&gt;).</rule>
+    <rule>when="..." is a condition over v (save version, header offset 4), a (archive version) and earlier fields of the same node by name. Absent means always. Operators: &gt;=, &gt;, &lt;=, &lt;, ==, !=, and, or.</rule>
+    <rule>Field elements: u8 u16 u32 u64 i32 f32 (fixed size); cname (u64 hash from v &gt;= 193, string below); string (varint-length ASCII); name (a string used as a name); tweakDBID (8 bytes); bytes size="N"; blob (u32 size then bytes); varint.</rule>
+    <rule>array: count is the count type (u8 u16 u32 varint or a literal number) or countField names an earlier field; elementType names a primitive or a &lt;type&gt;; elementBytes is the size of an opaque element; a nested &lt;element&gt; describes a struct element.</rule>
+    <rule>parallelArrays: one count, then each column in turn. countedArrays: all varint counts first, then each array. repeat: repeat the children countField times, or once per element of the array named by over. group: fields that appear together (usually under a when). switch/case/default: choose on a field value. repeatToEnd: repeat until the data is used up. optionalTail: bytes present only when they fit. undecoded: bytes whose layout is unknown. computed: a value derived from other fields. child: where a child node sits among the node's own data. ref: a reusable &lt;type&gt;.</rule>
+    <rule>source="0x..." gives the address of the game function that reads the structure in the 2.5 exe; addresses move with every build.</rule>
+  </conventions>
+  <container status="verified" verifiedOn="save versions 193, 261, 269, 277 (game versions 8, 2100, 2310, 2500)">
+    <note>sav.dat. All integers are little-endian. Four-character tags are stored byte-reversed on disk, so VASC on disk is CSAV. The layout is identical in all four verified versions apart from the chunk table capacity. Other versions are untested.</note>
+    <saveFolder>
+      <note>%USERPROFILE%\Saved Games\CD Projekt Red\Cyberpunk 2077\&lt;SaveName&gt;\ contains sav.dat, metadata.9.json and screenshot.png. metadata.9.json holds readable summary fields (level, life path, buildPatch, playTime and so on) and is what the load menu reads.</note>
+      <open>The exact schema of metadata.9.json and how it relates to sav.dat.</open>
+    </saveFolder>
+    <header>
+      <field offset="0" size="4" type="tag" name="magic" status="verified">VASC (CSAV on disk byte-reversed)</field>
+      <field offset="4" size="4" type="u32" name="saveVersion" status="verified">What node parsers branch on (v).</field>
+      <field offset="8" size="4" type="u32" name="gameVersion" status="verified">The game's gameGameVersion enum, see versions/gameVersions.</field>
+      <field offset="12" size="1" type="string" name="gameDefinitionPath" status="verified">Length-prefixed string. CyberCAT treats it as an unused padding byte; CSE and WolvenKit's reader (GameDefPath) read a string. Empty (00) in every save seen, so all readings agree. metadata.9.json has a matching gameDefinition field, also empty. What the game writes when it is not empty is open.</field>
+      <field offset="13" size="4" type="u32" name="clock" status="verified">Packed: hour = clock &gt;&gt; 22, minutes = (clock &gt;&gt; 16) &amp; 63, seconds = (clock &gt;&gt; 10) &amp; 63, milliseconds = clock &amp; 1023. WolvenKit reads clock and date as one u64 timestamp with the clock in the low half; the split into two u32 is CyberCAT's.</field>
+      <field offset="17" size="4" type="u32" name="date" status="verified">Packed: year = date &gt;&gt; 20, month = 1 + (date &gt;&gt; 15) % 32, day = 1 + (date &gt;&gt; 10) % 32. Checked on ManualSave-6 (written 2026-10-23 21:22): clock 0x0556b578 is 21:22, date 0x7ea4d800 is 2026-10-23.</field>
+      <field offset="21" size="4" type="u32" name="archiveVersion" status="verified">195 in all four saves, including patch 1.04. CSE reads it only when saveVersion &gt;= 83 and assumes 192 otherwise. CSE accepts up to 195.</field>
+      <field offset="25" size="4" type="tag" name="chunkTag" status="verified">FZLC (CLZF on disk)</field>
+      <field offset="29" size="4" type="u32" name="chunkCount" status="verified">N. A reader must trust only this count, not the table padding.</field>
+      <field offset="33" size="12*N" type="chunkEntry[]" name="chunkTable" status="verified">See chunkTable.</field>
+      <field offset="33+12*N" size="to firstChunkOffset" type="padding" name="padding" status="verified">Zero padding; may hold stale bytes (in at least one save the padding held entries that do not belong to the file).</field>
+      <field offset="firstChunkOffset" size="" type="chunk[]" name="chunks" status="verified">N LZ4 chunks back to back.</field>
+      <field offset="nodeTableOffset" size="" type="nodeTable" name="nodeTable" status="verified" />
+      <field offset="end-8" size="4" type="u32" name="nodeTableOffset" status="verified">Absolute file offset of the node table.</field>
+      <field offset="end-4" size="4" type="tag" name="endTag" status="verified">ENOD (DONE on disk)</field>
+      <open>Whether the string at offset 12 can ever be non-empty, and what the length prefix looks like for long strings.</open>
+    </header>
+    <chunkTable>
+      <entry>
+        <u32 name="offset">Absolute file offset.</u32>
+        <u32 name="compressedSize">Includes the 8-byte chunk header.</u32>
+        <u32 name="uncompressedSize" />
+      </entry>
+      <note status="verified">Chunks are contiguous: each entry's offset + compressedSize equals the next offset and the last one ends exactly at the node table offset. The uncompressed size is 262,144 for every chunk except the last, which holds the remainder.</note>
+      <capacity>
+        <layout saveVersions="193, 261" firstChunkOffset="3105" firstChunkOffsetHex="0xC21" entries="256" chunkSize="262144" status="verified" />
+        <layout saveVersions="269, 277" firstChunkOffset="6177" firstChunkOffsetHex="0x1821" entries="512" chunkSize="262144" status="verified">A third layout that CyberCAT's original code does not list.</layout>
+        <layout saveVersions="not seen" entries="1024" chunkSize="524288" status="untested">From CyberCAT only.</layout>
+        <note>firstChunkOffset = 33 + 12 * entries. CyberCAT finds the capacity as (firstChunkOffset - 33) / 12. CSE writes the table with a minimum firstChunkOffset of 0xC21.</note>
+        <open>Whether the game picks the layout by save version or by save size.</open>
+      </capacity>
+    </chunkTable>
+    <chunk status="verified">
+      <tag name="tag">4ZLX (XLZ4 on disk)</tag>
+      <u32 name="uncompressedSize">Equal to the table entry.</u32>
+      <bytes name="lz4Block">Raw LZ4 block, no frame header.</bytes>
+      <note>Concatenating the decompressed chunks gives the node data stream.</note>
+      <open>Console saves: CSE detects chunks that lack the 4ZLX tag (it calls this "ps4w") and treats them as uncompressed, and also accepts the magic SAVE. Neither is in the PC saves.</open>
+    </chunk>
+    <logicalOffsets status="verified">
+      <note>Node offsets live in a logical space: logical = firstChunkOffset + position in the decompressed stream. In all four versions the lowest node offset equals firstChunkOffset and the highest node end equals firstChunkOffset + total decompressed size.</note>
+    </logicalOffsets>
+    <nodeTable status="verified">
+      <tag name="tag">EDON (NODE on disk)</tag>
+      <varint name="nodeCount" />
+      <repeat name="nodes" countField="nodeCount">
+        <string name="name" />
+        <i32 name="nextId">Index of the next sibling, -1 for none.</i32>
+        <i32 name="childId">Index of the first child, -1 for none.</i32>
+        <u32 name="offset">Logical offset.</u32>
+        <u32 name="size">Includes the node's children and any data after them.</u32>
+      </repeat>
+      <u32 name="nodeTableOffset">Repeat of the offset at end-8.</u32>
+      <tag name="endTag">ENOD</tag>
+    </nodeTable>
+    <varintEncoding status="verified">
+      <note>First byte: bit 7 sign, bit 6 continuation, bits 0-5 value. Each later byte: bits 0-6 value, bit 7 continuation. Value bits are little-endian groups: the first byte holds bits 0-5, the next bits 6-12, and so on. In every save the whole node table is consumed exactly.</note>
+    </varintEncoding>
+    <stringEncoding status="verified">
+      <note>A varint length followed by the characters. The length is stored negated (sign bit set), meaning single-byte characters; CyberCAT reads it as -length single-byte characters. Every name and string in the saves is stored this way. A positive length is never seen and CyberCAT does not handle it.</note>
+      <open>How a positive name length would be encoded.</open>
+    </stringEncoding>
+    <nodeNames>
+      <note>Node names include version suffixes: PersistencySystem in 193 became PersistencySystem2 from 261, and names like ProgressAggregator_v5 carry a schema version. Nodes whose names start with a quote (such as "Core") are child nodes inside other nodes; the quote is part of the name as stored.</note>
+    </nodeNames>
+    <tree status="verified">
+      <rule>Nodes form a tree. childId is the node's first child and nextId is its next sibling; -1 means none. Both are indexes into the node table.</rule>
+      <rule>Starting at node 0 and following nextId gives the root nodes (61 to 88 of them, depending on the save). Following childId and nextId reaches every node exactly once.</rule>
+      <rule>nextId is always greater than the node's own index, so the table is in depth-first order.</rule>
+      <rule>A parent's byte range contains all its children's ranges.</rule>
+      <rule>Every node's payload starts with a u32 node id that equals the node's index in the node table.</rule>
+      <rule>A parent's payload is not made up only of its children. For example GameSessionDesc (58 bytes) has its first child at +4, so there is data before it.</rule>
+    </tree>
+    <gaps status="verified">
+      <note>Bytes between sibling nodes: a node's recorded range does not always end where the next sibling starts. In all four save versions some siblings have a gap of 4 to 16 bytes (for example between UniqueItemCounter and inventory, and between itemData nodes). The gap belongs to no node's size. A writer that wants an identical node table must keep these bytes. The gaps are not decoded, except that for inventory they hold item id headers (see the inventory node).</note>
+    </gaps>
+    <trailingData status="verified">
+      <note>A node's own data does not always end where its first child begins. Some nodes write further fields after their last child, inside the same node range. A parser that stops at the first child misses them. Known cases: TimeSystem (17 bytes), GPSSystem (one 12-byte position per child), GameAudio (a string, 261+), ItemDropStorageManager (u32), and inventory (24 or 36 bytes in some 277 saves).</note>
+    </trailingData>
+    <rewriting status="open">
+      <note>Rewriting a save: node sizes, offsets, chunk table and trailer all change when a node grows, and the game may check more than these. Writing a save back and loading it in the game has not been tried. RelicWriter.Common reads and writes the container; reading then writing gives the same node tree and a byte-identical node table on all 24 local saves.</note>
+      <note>CSE re-serialises each node it understands and compares the bytes with the original before allowing edits (test_reserialize in savegame.h); that check should be copied.</note>
+    </rewriting>
+  </container>
+  <versions>
+    <observed note="Missing: every save version between these, and anything from the first release (1.0) up to 1.04. The save version for patches 1.x is probably in the 190s, but only 193 has been seen. Node counts vary with how far into the game the save is, so they are not a version signal.">
+      <save saveVersion="193" gameVersion="7, 8, 9" patch="1.03, 1.04, 1.05" chunkTableCapacity="256" nodesInSample="366" status="container verified" />
+      <save saveVersion="224" gameVersion="1600" patch="1.6" chunkTableCapacity="256" nodesInSample="115 distinct names" status="container verified" />
+      <save saveVersion="254" gameVersion="2010" patch="2.01" chunkTableCapacity="256" nodesInSample="127 distinct names" status="container verified" />
+      <save saveVersion="261" gameVersion="2100" patch="2.1" chunkTableCapacity="256" nodesInSample="593" status="container verified" />
+      <save saveVersion="263" gameVersion="2120" patch="2.12" chunkTableCapacity="256" nodesInSample="129 to 130 distinct names" status="container verified" />
+      <save saveVersion="269" gameVersion="2310" patch="2.31" chunkTableCapacity="512" nodesInSample="574" status="container verified" />
+      <save saveVersion="277" gameVersion="2500" patch="2.5" chunkTableCapacity="512" nodesInSample="207 to 224" status="container verified" />
+    </observed>
+    <headerNumbers>Three numbers in the header. CSE names them v1, v2, v3; CyberCAT names them save version, game version and archive version. Save version is what node parsers branch on. Game version is the game's gameGameVersion enum; 8 is CP77_PatchDay0_Hotfix2_V2: early builds used small sequence numbers and patch-based numbering (patch times 1000) starts at 1.1, so a 1.04 save with game version 8 is expected. Archive version is 195 in all four saves; CSE accepts up to 195 and rejects anything higher ("will change soon").</headerNumbers>
+    <gameVersions source="gameGameVersion enum in WolvenKit, from the game's reflection data. It stops at 2.3, so 2310 (our 269 save) and 2500 (our 277 save) come from our saves and the buildPatch in their metadata agrees. The 1.4 value (1310) is lower than the 1.3 development build: do not assume game versions only go up with patch number.">
+      <version value="0 to 4" name="Initial, Development, GoldMaster, ActualGoldMaster, AlmostPatchDay0" />
+      <version value="1500" name="1.5" />
+      <version value="5" name="PatchDay0" />
+      <version value="1510" name="1.5 hotfix 1" />
+      <version value="6" name="PatchDay0 hotfix 1" />
+      <version value="1520" name="1.5 actual hotfix 1" />
+      <version value="7" name="PatchDay0 hotfix 2" />
+      <version value="1599" name="1.5 development" />
+      <version value="8" name="PatchDay0 hotfix 2 v2 (our 193 save)" />
+      <version value="1600" name="1.6" />
+      <version value="9" name="PatchDay0 hotfix 3" />
+      <version value="1610, 1620, 1630" name="1.6 hotfixes 1 to 3" />
+      <version value="10" name="Christmas hotfix" />
+      <version value="2000" name="2.0" />
+      <version value="11" name="Hotfix 4 (internal)" />
+      <version value="2010, 2020" name="2.0 hotfixes 1 and 2" />
+      <version value="12" name="Patch 1 internal" />
+      <version value="2100" name="2.1 (our 261 save)" />
+      <version value="1100, 1110, 1120" name="1.1 and hotfixes 1 and 2" />
+      <version value="2110, 2120, 2137" name="2.1 hotfixes 1 to 3" />
+      <version value="1200" name="1.2" />
+      <version value="2200, 2210" name="2.2 and hotfix 1" />
+      <version value="1210, 1220, 1230, 1240" name="1.2 hotfixes 1 to 4 (1240 is the first DLC build)" />
+      <version value="2300" name="2.3 (the enum's &quot;current&quot;)" />
+      <version value="1300, 1301, 1399" name="1.3, hotfix 1, development" />
+      <version value="2310" name="2.31 (our 269 save, not in the enum)" />
+      <version value="1310" name="1.4 (a lower number than 1.3)" />
+      <version value="2500" name="2.5 (our 277 save, not in the enum)" />
+    </gameVersions>
+    <referenceToolGates status="unverified" note="Version-gated parsing in CyberCAT and CSE, from their source, not from our checks, except the two rows labelled game code which were read from the exe. Nothing newer than CSE v0.6.1 (May 2024, built for patch 2.12) is covered, and its version checks stop at save version 221. The game's own loaders have a threshold at 248 for inventory/itemData that the tools do not; whether it changes bytes in those nodes is open (the tools parse the 261, 269 and 277 saves without it).">
+      <gate condition="save version ≥ 83" where="header">The archive version field is present. Below that it is assumed to be 192.</gate>
+      <gate condition="save version ≤ 168 and game version = 4" where="header">CSE refuses to load.</gate>
+      <gate condition="save version ≥ 97" where="inventory">An extra byte blob is read for each item id.</gate>
+      <gate condition="save version ≥ 190" where="inventory">Further extra data in the item id.</gate>
+      <gate condition="save version ≥ 221" where="inventory">Further extra data in the item id.</gate>
+      <gate condition="save version ≥ 192" where="itemData">An extra field is read and written.</gate>
+      <gate condition="save version &gt; 171" where="CharacetrCustomization_Appearances">An extra list of strings follows the string triples.</gate>
+      <gate condition="save version ≥ 168" where="CharacetrCustomization_Appearances">A second string field per entry (CSE has this as a comment, not code).</gate>
+      <gate condition="archive version ≥ 195" where="CharacetrCustomization_Appearances">The hash is a `u64`. Below 195 the layout is different (CSE has a separate branch).</gate>
+      <gate condition="save version &lt; 205 (0xCD)" where="game code, persistency loader">Reads the old `PersistencySystem` node (with `PSData` children). From 205 it reads `TypeDatabase_v2` and `PersistencySystem2` instead. **From the game's own code** (patch 2.5 exe), checked against our four saves: 193 has the old node, 261 and later the new one.</gate>
+      <gate condition="save version &gt; 124 (0x7C)" where="game code, old `PersistencySystem` path">The node starts with the id array described in [save-node-formats.md](save-node-formats.md).</gate>
+      <gate condition="game version = 2120" where="CSE scripting">Only used to flag blueprint compatibility with patch 2.12.</gate>
+    </referenceToolGates>
+    <loaderThresholds exe="Cyberpunk2077.exe 2.5" status="partial" note="Produced from the exe: for each node name the exe holds a small function that returns the name hash; the functions that call it are the node loader and saver. 65 of them compare the stream's save version with constants. Each constant is &quot;the layout changes at save version &gt;= N&quot; (a test K &lt; version becomes N = K + 1). Checked against the reference tools (item loaders 96, 189, 220 = tools' 97, 190, 221; appearance 168 as in CSE; StatsSystem 276 sits between our 269 and 277 saves). Limits: read from decompiled code with a pattern match; a row with several nodes does not say which node a threshold belongs to; small values (below about 30) and PersistencySystem thresholds other than 125 and 205 may come from a reused variable. What each change is, is not known unless described in a node entry. The highest threshold is 277 (PhoneManager), so 277 is the newest save version this build has a layout for. Known meanings: StatsSystem 276 is the shared-buffer layout; PersistencySystem 205 is the switch to TypeDatabase_v2 and PersistencySystem2, 125 is whether the id array exists; inventory and itemData 97, 190, 221 are the item id fields, 248 is not in the tools; CharacetrCustomization_Appearances 168 is the tag field.">
+      <loader nodes="AchievementSystem" address="0x1422c79b0`" bytes="198" thresholds="257" />
+      <loader nodes="ActivityCardsSystem" address="0x1415614dc`" bytes="298" thresholds="213" />
+      <loader nodes="AnimationPersistentDataSystem`, `AnimationPersistentDataSystem_InstancedCrowdBlend" address="0x140792c6c`" bytes="619" thresholds="132, 173" />
+      <loader nodes="CameraComponentRenderLayer`, `ComponentsStateSystem`, `ComponetsState" address="0x1412e6edc`" bytes="313" thresholds="184" />
+      <loader nodes="CarrySystem" address="0x140bea05c`" bytes="224" thresholds="19" />
+      <loader nodes="CAttitudeManager" address="0x140ede850`" bytes="304" thresholds="98" />
+      <loader nodes="CCoverManager`, `WorkspotInstancesSavedata" address="0x140ab85c0`" bytes="895" thresholds="128, 144" />
+      <loader nodes="CharacetrCustomization_Appearances" address="0x140972a68`" bytes="608" thresholds="34, 68, 115, 168" />
+      <loader nodes="ComponetsState`, `FadeOutSave`, `IsInMirrorsAreaSave` …" address="0x1409bcdec`" bytes="1917" thresholds="10, 106, 184" />
+      <loader nodes="ContainerManager`, `ContainerManager_InjectedLoot`, `ContainerManager_LootReinitBuffer` …" address="0x14073b7f8`" bytes="2647" thresholds="43, 45, 48, 91, 103, 238, 245, 252, 253, 268" />
+      <loader nodes="Core`, `TimeSystem`, `Timers" address="0x140a09e24`" bytes="1310" thresholds="18, 21, 50, 66, 175" />
+      <loader nodes="Core`, `DelaySystem`, `DelaySystem_V2` …" address="0x141133b2c`" bytes="1401" thresholds="212, 225" />
+      <loader nodes="currentFocusMode`, `delayedReveals`, `scanningController" address="0x1412e6cdc`" bytes="564" thresholds="94, 176" />
+      <loader nodes="DelamainTaxi`, `MappinSystemRefactored`, `MappinSystem_CustomPos` …" address="0x14103f420`" bytes="1124" thresholds="14, 27, 28, 41, 170, 260, 267, 269" />
+      <loader nodes="DestructionPersistencySystem" address="0x14062f864`" bytes="1897" thresholds="4, 181, 198, 206" />
+      <loader nodes="DirectorSystem" address="0x140a15620`" bytes="445" thresholds="71, 177" />
+      <loader nodes="DS_DynamicConnections`, `DeviceSystem" address="0x140a06e78`" bytes="269" thresholds="141" />
+      <loader nodes="DynamicEntityIDSystem" address="0x14103f0f0`" bytes="564" thresholds="8, 11, 59" />
+      <loader nodes="EffectSpawnerSavedata" address="0x140c8f280`" bytes="388" thresholds="240, 242" />
+      <loader nodes="ForbiddenArea`, `VehicleSystem" address="0x1409c4364`" bytes="596" thresholds="39, 73" />
+      <loader nodes="game::SessionConfig" address="0x1412e6b00`" bytes="512" thresholds="67, 160, 219" />
+      <loader nodes="GameAudio" address="0x140a15460`" bytes="350" thresholds="38" />
+      <loader nodes="godModeSystem" address="0x1409a4688`" bytes="560" thresholds="78" />
+      <loader nodes="GuardAreaManager" address="0x14144b0e0`" bytes="458" thresholds="230" />
+      <loader nodes="inventory`, `itemData" address="0x14074104c`" bytes="1234" thresholds="97, 190, 221, 248" />
+      <loader nodes="inventory" address="0x142b0e94c`" bytes="555" thresholds="97, 190, 221" />
+      <loader nodes="itemData" address="0x14073e3e8`" bytes="852" thresholds="12, 36, 51, 85, 97, 190, 221" />
+      <loader nodes="itemData" address="0x14074019c`" bytes="913" thresholds="12, 36, 51, 85, 97, 190, 221, 227" />
+      <loader nodes="itemData" address="0x1412f11e0`" bytes="594" thresholds="97, 190, 221" />
+      <loader nodes="itemData" address="0x142a952e4`" bytes="379" thresholds="97, 190, 221" />
+      <loader nodes="ItemDropStorage`, `ItemDropStorageManager" address="0x14073c9cc`" bytes="545" thresholds="178" />
+      <loader nodes="JournalManager" address="0x1409b8684`" bytes="2594" thresholds="5, 25, 107, 111, 120, 122, 217, 233, 234" />
+      <loader nodes="LevelAssignmentSystem_Ver1" address="0x14156664c`" bytes="241" thresholds="61" />
+      <loader nodes="LootManager_PersistentTables`, `LootManager_PlaythroughSeed" address="0x140be77b4`" bytes="338" thresholds="210, 232" />
+      <loader nodes="ModdingSystem" address="0x141847814`" bytes="202" thresholds="229" />
+      <loader nodes="MovingPlatformSystem" address="0x1404de8e8`" bytes="494" thresholds="17" />
+      <loader nodes="MusicSystem" address="0x140a15750`" bytes="619" thresholds="82, 140" />
+      <loader nodes="nodeInstanceDataManager" address="0x140739eec`" bytes="310" thresholds="20" />
+      <loader nodes="ObjectCarrySystem" address="0x140be9020`" bytes="265" thresholds="163" />
+      <loader nodes="PhantomEntity" address="0x14184a668`" bytes="125" thresholds="92" />
+      <loader nodes="PhoneManager" address="0x1415ad0d4`" bytes="424" thresholds="117, 137, 201, 207, 243, 277" />
+      <loader nodes="PhotoMode_BugFixing`, `PhotoMode_LightSettings`, `PhotoMode_NewStickersEditor` …" address="0x14035d850`" bytes="1108" thresholds="70, 81, 138, 195, 265, 266, 274, 275" />
+      <loader nodes="playerObjectListenerMapper" address="0x140438048`" bytes="378" thresholds="164" />
+      <loader nodes="PlayerSystem" address="0x14132aa3c`" bytes="337" thresholds="9, 101" />
+      <loader nodes="PreventionSpawnSystem" address="0x140e184a0`" bytes="409" thresholds="237" />
+      <loader nodes="PSData`, `PersistencySystem`, `PersistencySystem2` …" address="0x14059fb28`" bytes="1873" thresholds="2, 3, 24, 125, 205" />
+      <loader nodes="questContentSystem" address="0x14150f260`" bytes="671" thresholds="24, 86, 204" />
+      <loader nodes="questDebugLogManager" address="0x140739c80`" bytes="183" thresholds="183" />
+      <loader nodes="questPhaseFreezer" address="0x1407398a0`" bytes="284" thresholds="135" />
+      <loader nodes="questPrefabsHandler" address="0x140739d2c`" bytes="476" thresholds="22" />
+      <loader nodes="QuestProgressedAggregator`, `QuestProgressedAggregator_v2`, `QuestProgressedAggregator_v3" address="0x14119440c`" bytes="411" thresholds="218" />
+      <loader nodes="questSceneDataHelper" address="0x1407397ac`" bytes="242" thresholds="146" />
+      <loader nodes="questSystem" address="0x140739578`" bytes="803" thresholds="139, 231" />
+      <loader nodes="QueuedData" address="0x1407392e4`" bytes="659" thresholds="139" />
+      <loader nodes="RenderGameplayEffectsManagerSystem" address="0x1413e1ba8`" bytes="182" thresholds="131, 166" />
+      <loader nodes="SceneSystem`, `choiceHubSystem`, `choices` …" address="0x14073d0fc`" bytes="814" thresholds="193, 199" />
+      <loader nodes="ScriptableSystemsContainer" address="0x140e18240`" bytes="328" thresholds="3" />
+      <loader nodes="StatPoolsSystem" address="0x140a075b0`" bytes="181" thresholds="6" />
+      <loader nodes="StatsDataSystem" address="0x14138c89c`" bytes="414" thresholds="133" />
+      <loader nodes="StatsSystem" address="0x140a96e68`" bytes="1037" thresholds="52, 165, 226, 276" />
+      <loader nodes="tierSystem" address="0x14140be50`" bytes="508" thresholds="30" />
+      <loader nodes="TutorialManager" address="0x1418174a0`" bytes="237" thresholds="121" />
+      <loader nodes="UIGameControllersState" address="0x140c79414`" bytes="243" thresholds="102" />
+      <loader nodes="UniqueItemCounter" address="0x141846114`" bytes="233" thresholds="190" />
+      <loader nodes="WardrobeSystem`, `WardrobeSystem_ClothingSets" address="0x141080dd0`" bytes="680" thresholds="223, 224" />
+    </loaderThresholds>
+    <nodeSetChanges note="Only node names were compared, not payload contents. They can be affected by how far each save had progressed.">
+      <change from="193" to="261">New AchievementSystem, ActivityCardsSystem, ArcadeSystem, DelaySystem, DelaySystem_V2, EffectSpawnerSavedata, GuardAreaManager, ModdingSystem, PreventionSpawnSystem, ReactionSystem, ReactionSystem_v2, PhotoMode_NewStickersEditor and others. Gone: PSData and PersistencySystem. PersistencySystem2, TypeDatabase_v2, PathInstance_Quest_v1 and ProgressAggregator_v6 appear.</change>
+      <change from="193" to="224" note="One save, so only what that save contains (PathInstance_Quest_v1 is also in a second 193 save, game 1.03)">New PersistencySystem2, ReactionSystem, ReactionSystem_v2, DelaySystem, DelayedStructs, InterestingConversations, LootManager_PlaythroughSeed, PathInstance_Quest_v1, WeatherWorldState, PhotoMode_NewStickersEditor, ActivityCardsSystem, WardrobeSystem, WardrobeSystem_ClothingSets, ArcadeSystem. Gone: PersistencySystem, PSData, FadeOutSave.</change>
+      <change from="224" to="254" note="One save each">The 254 save has TypeDatabase_v2, GuardAreaManager, PreventionSpawnSystem, ContainerManager_LootReinitBuffer, ControlledLootIntroduction, HandicapAmmoInContainers, DelaySystem_V2, DelayedTicks, LootManager_PersistentTables, EffectSpawnerSavedata, ProgressAggregator_v6, ModdingSystem, which the 224 save lacks.</change>
+      <change from="224" to="261">Not in the 224 save but in 261: TypeDatabase_v2, GuardAreaManager, PreventionSpawnSystem, ContainerManager_LootReinitBuffer, ControlledLootIntroduction, HandicapAmmoInContainers, DelaySystem_V2, DelayedTicks, LootManager_PersistentTables, MappinSystem_SavedStealthMappinData, EffectSpawnerSavedata, ProgressAggregator_v6, AchievementSystem, ModdingSystem.</change>
+      <change from="261" to="263">New StreamingPrefetchParamsNew (in one of three saves only). Gone: FadeOutSave.</change>
+      <change from="263" to="269">New DelamainTaxi, MappinSystem_DelamainMappin, PhotoMode_LightSettings, PhotoMode_OutfitWeather. Gone: StreamingPrefetchParamsNew.</change>
+      <change from="269" to="277">New PhotoMode_BugFixing, PhotoMode_PresetsBugFixing. Gone: LevelGainedAggregator.</change>
+    </nodeSetChanges>
+    <versionedNodeNames>Some node names end in a schema version (TypeDatabase_v2, PersistencySystem2, ReactionSystem_v2, DelaySystem_V2, ProgressAggregator_v1 to _v6, PathInstance_Quest_v1). The suffix appears to be how the game versions an individual node's payload format, separate from the file's overall save version. Whether a changed suffix always means a changed payload layout is open.</versionedNodeNames>
+    <referenceToolSupport>
+      <note>CyberCAT-SimpleGUI README lists patch 1.5X and 1.23 as fully supported and 1.3 as partial, but is out of date. Its current code loads saves through WolvenKit's CyberpunkSaveReader, which refuses any save with a game version below 2000 (patch 2.0), so it cannot open a 193 save. The CyberCAT.Core.dll it still ships has exactly the same parser set as the archived WolvenKit/CyberCAT source.</note>
+      <note>WolvenKit's reader has one game-version gate: from game version 2110 (patch 2.1 hotfix 1) a node ContainerManager_InjectedLoot carries one more byte per sub-entry.</note>
+      <note>WolvenKit/CyberCAT was archived with its last change in Feb 2022 (predates Phantom Liberty and 2.x). CSE is the most recent readable source (up to patch 2.12, May 2024). None of the three covers 2.3 or later; the local saves are the only evidence for 269 and 277.</note>
+    </referenceToolSupport>
+    <open>Which save versions exist between and before the four observed ones and what each changed. How the game's loader treats older versions (does it upgrade nodes on load, which suffixes does it accept). Whether any save version changes the container layout itself (all four seen share it except the chunk table capacity).</open>
+  </versions>
+  <types>
+    <note>Reusable structures referenced from node layouts with &lt;ref type="..."/&gt;. A ref with count/countField repeats the type. Conditions use the same variables as in nodes.</note>
+    <type name="TweakDBID" size="8" status="verified">
+      <u32 name="crc32">CRC-32 of the record name (for example Items.money).</u32>
+      <u8 name="length">Length of the name.</u8>
+      <bytes name="zero" size="3" />
+      <note>Verified by finding Items.money in the inventory of every save version. Turning an id back into a name needs a list of known record names, which a save does not contain.</note>
+    </type>
+    <type name="CName" status="verified">
+      <note>In a node: a u64 from save version 193 up, a string below (the loader tests for 193 exactly). The u64 is (length &lt;&lt; 32) | FNV-1a-32 of the name. In system blobs a CName is a u16 index into the string pool. In property streams a CName is a u64 hash.</note>
+    </type>
+    <type name="FNV1a64" status="verified">
+      <note>Start at 0xcbf29ce484222325; for each byte xor it in and multiply by 0x100000001b3 modulo 2^64. Used for node names in the game's loaders, property and type names in property streams and TypeDatabase_v2, class names, and gamedataStatType values in the stats shared buffer.</note>
+    </type>
+    <type name="ItemID" status="verified">
+      <tweakDBID name="record">The item record, such as Items.money.</tweakDBID>
+      <u32 name="seed">2 on the first item of every save looked at. Exact meaning open.</u32>
+      <u8 name="kindByte" when="v &gt;= 97" />
+      <u16 name="unknown1" when="v &gt;= 190" />
+      <u8 name="unknown2" when="v &gt;= 221" />
+      <note>The record is 15 bytes in the 193 save and 16 bytes in 261, 269 and 277. Verified at 193 and 261; the thresholds 97, 190 and 221 come from CSE (the game's loaders agree: 96, 189, 220 with the direction of the test applied) and are not tested at the boundaries.</note>
+    </type>
+    <type name="ItemMod" status="verified">
+      <note>A recursive record for an item and the mods attached to it.</note>
+      <ref name="itemId" type="ItemID" />
+      <string name="name" />
+      <tweakDBID name="slot">The attachment slot, per CyberCAT.</tweakDBID>
+      <array name="children" count="varint" elementType="ItemMod" />
+      <u32 name="unknown" />
+      <group name="trailer" when="v &gt;= 192">
+        <note>Matches the layout of the mod root header. Always present at 193 and above in the saves; below 192 untested.</note>
+        <tweakDBID name="record" />
+        <u32 name="unknown" />
+        <f32 name="unknown2" />
+      </group>
+    </type>
+    <type name="CommunityLeaf" status="verified">
+      <array name="list1" count="u32" elementType="u64" />
+      <u16 name="unknownA" />
+      <u8 name="unknownB" />
+      <array name="list2" count="u32" elementType="u64">
+        <note>The game reads it only if the stream has a version; every save has one.</note>
+      </array>
+      <u16 name="unknownC" when="v &gt;= 15" />
+      <u16 name="unknownD" when="v &gt;= 143" />
+      <array name="list3" count="u32" elementType="u64" when="v &gt;= 180" />
+      <array name="records" count="u32" elementBytes="16" when="v &gt;= 254" />
+    </type>
+    <type name="AppearanceGroupList" status="verified">
+      <array name="groups" count="u32" elementType="AppearanceGroup" />
+    </type>
+    <type name="AppearanceGroup" status="verified">
+      <string name="name">For example TPP, FPP, hairs, character_customization, TPP_photomode, face.</string>
+      <array name="parts" count="u32" elementType="AppearancePart" />
+      <array name="choices" count="u32" elementType="AppearanceChoice" />
+    </type>
+    <type name="AppearancePart" status="verified">
+      <u64 name="name" when="a &gt;= 195">Probably a hash of a string; the hash function is not identified.</u64>
+      <string name="name" when="a &lt; 195">Our saves are all at archive version 195, so this branch is untested.</string>
+      <string name="resourceName">For example h0_000_pwa__basehead__face_rig.</string>
+      <string name="tag" when="v &gt;= 168">For example tpp_head_face_rig, skin_type_05.</string>
+      <u32 name="unknown1" />
+      <u32 name="unknown2" />
+    </type>
+    <type name="AppearanceChoice" status="verified">
+      <string name="a">For example eyes.</string>
+      <string name="b">For example h041.</string>
+      <u32 name="c" />
+      <u32 name="d" />
+    </type>
+    <type name="AppearanceMapping" status="verified">
+      <string name="base" />
+      <string name="firstPerson" />
+      <string name="thirdPerson" />
+      <note>For example holstered_default, holstered_default_fpp, holstered_default_tpp. The game uses these to tie a base name to its first-person and third-person variants.</note>
+    </type>
+    <type name="InstanceHeader" status="verified" source="game loader 0x14073f780">
+      <u8 name="a" />
+      <u8 name="b">a and b are 0 in nearly every instance.</u8>
+      <array name="languages" count="3" elementType="name">en-us three times in every save seen.</array>
+      <u8 name="c">0 or 1.</u8>
+      <string name="place">For example around_player, None.</string>
+      <string name="scene">The scene file or id, for example cs_sm_homeless_trashcan_player_scene; empty in the 193 and 261 saves.</string>
+      <u8 name="d" />
+      <u8 name="e" when="v &gt;= 162" />
+      <array name="tags" count="u32" when="v &gt;= 182">
+        <element>
+          <string name="name" />
+          <u32 name="value" />
+        </element>
+      </array>
+      <array name="tags" count="u8" when="v &lt; 182" status="untested">
+        <element>
+          <string name="name" />
+          <u32 name="value" />
+        </element>
+      </array>
+      <u8 name="f" when="v &gt;= 44" />
+      <u8 name="g" when="v &gt;= 44" />
+      <u32 name="h" when="v &gt;= 79" />
+      <u32 name="state" when="v &gt;= 169" />
+      <array name="extras" count="u32" when="v &gt;= 255">
+        <note>Seen with one element in 1 instance.</note>
+        <element>
+          <u8 name="a" />
+          <u64 name="b" />
+          <u64 name="c" />
+          <string name="d" />
+        </element>
+      </array>
+      <note status="untested">Between save versions 37 and 75 the game reads one more block here (0x1401d8448, old form); no local save is in that range.</note>
+    </type>
+    <type name="InstanceTriple" status="verified" source="0x14073da04">
+      <ref name="id" type="InstanceId" />
+      <u32 name="a" />
+      <u32 name="b" />
+      <u32 name="c" />
+    </type>
+    <type name="InstanceId" status="verified">
+      <u64 name="a" />
+      <u64 name="b" />
+      <u64 name="c" />
+      <u8 name="d" />
+      <u8 name="e" />
+      <u8 name="f" when="v &gt;= 72" />
+    </type>
+    <type name="InstanceCond" status="verified" source="0x140f77ed4">
+      <u8 name="kind" />
+      <switch on="kind">
+        <case value="1">
+          <string name="name" />
+          <u32 name="value" />
+          <u8 name="flag" />
+        </case>
+        <case value="2">
+          <string name="name1" />
+          <string name="name2" />
+          <u8 name="flag" />
+        </case>
+        <default>
+          <note>Any other kind: nothing more.</note>
+        </default>
+      </switch>
+    </type>
+    <type name="InstanceVariant" status="untested" source="0x142d2013c">
+      <note>No local line used a Pair, so no local save contains a Variant.</note>
+      <u8 name="kind" />
+      <switch on="kind">
+        <case value="0">
+          <string name="text" />
+        </case>
+        <case value="1">
+          <array name="names" count="u32" elementType="name" />
+        </case>
+        <case value="2">
+          <string name="text" />
+          <string name="name" />
+        </case>
+        <case value="3">
+          <string name="name" />
+        </case>
+      </switch>
+    </type>
+    <type name="InstancePair" status="untested" source="0x14130c4cc">
+      <u32 name="a" />
+      <ref name="variant" type="InstanceVariant" />
+      <u8 name="b" />
+    </type>
+    <type name="InstanceLine" status="verified" source="0x14073fcac">
+      <note>The largest part of most instances: 384 instances, 420 lines in the local saves. Between save versions 208 and 214 the game reads one more block in a line (0x142d24a98); untested.</note>
+      <u32 name="id" />
+      <string name="speaker" />
+      <string name="voice" when="v &gt;= 215" />
+      <u8 name="a" when="v &gt;= 108" />
+      <u8 name="b" />
+      <u8 name="c" />
+      <u8 name="d" />
+      <u8 name="e" when="v &gt;= 127" />
+      <u8 name="f" when="v &gt;= 127" />
+      <u32 name="g" />
+      <u32 name="h" />
+      <group name="left" when="v &gt;= 127">
+        <u8 name="present">0 (none) or not 0 (one InstanceCond follows).</u8>
+        <ref name="cond" type="InstanceCond" when="present != 0" />
+      </group>
+      <group name="right" when="v &gt;= 127">
+        <u8 name="present" />
+        <ref name="cond" type="InstanceCond" when="present != 0" />
+      </group>
+      <array name="conditions1" count="u8" elementType="InstanceCond" />
+      <array name="conditions2" count="u8" elementType="InstancePair" />
+      <array name="conditions3" count="u8">
+        <element>
+          <u32 name="a" />
+          <string name="b" />
+          <u8 name="c" />
+        </element>
+      </array>
+      <array name="conditions4" count="u8">
+        <element>
+          <u32 name="a" />
+          <u8 name="b" />
+        </element>
+      </array>
+      <u8 name="h2" />
+      <u8 name="i" />
+      <u8 name="j" />
+      <array name="flags" count="u8" elementType="u8" />
+      <array name="extra1" count="u8" when="v &gt;= 104">
+        <element>
+          <u8 name="a" />
+          <string name="b" />
+        </element>
+      </array>
+      <u8 name="k" when="v &gt;= 127" />
+      <array name="conditions5" count="u8" elementType="InstanceCond" />
+      <array name="conditions6" count="u8" elementType="InstancePair" />
+      <array name="conditions7" count="u8">
+        <element>
+          <u32 name="a" />
+          <string name="b" />
+          <u8 name="c" />
+        </element>
+      </array>
+      <array name="conditions8" count="u8">
+        <element>
+          <u32 name="a" />
+          <u8 name="b" />
+        </element>
+      </array>
+      <u8 name="l" />
+      <array name="flags2" count="u8" elementType="u8" />
+      <array name="extra2" count="u8" when="v &gt;= 104">
+        <element>
+          <u8 name="a" />
+          <string name="b" />
+        </element>
+      </array>
+      <array name="extra3" count="u8" when="v &gt;= 113">
+        <element>
+          <u8 name="a" />
+          <u8 name="b" />
+        </element>
+      </array>
+    </type>
+  </types>
+  <formats>
+    <format name="systemBlob" status="verified">
+      <note>Many nodes store their data as a "system blob": a small serialised object graph that names its own classes and fields (StatsSystem, StatPoolsSystem, ScriptableSystemsContainer, ...). Verified by a throwaway parser written from CSE's source on one save of each version: in every node where the container applies, all objects and all fields were consumed exactly (about 3,900 objects and 13,700 fields). Decoded values match the save's metadata.9.json. Because each object lists its own field names and type names, the structure can be read without the game's class definitions; what cannot be read without them is which two-byte values are enums and which are empty structs.</note>
+      <usedBy status="detected by checking that the node's data has the header with a size that fits exactly">
+        <node name="StatsSystem" versions="193, 261, 269, 277" />
+        <node name="StreamingPrefetchParamsNew" status="open" instances="1" firstSeen="263" lastSeen="263" parsedByTools="no">
+      <note>Seen only in one of the three 263 saves (ManualSave-4); layout not read.</note>
+    </node>
+    <node name="StatPoolsSystem" versions="all four" />
+        <node name="ScriptableSystemsContainer" versions="all four" />
+        <node name="godModeSystem" versions="all four" />
+        <node name="tierSystem" versions="all four" />
+        <node name="MovingPlatformSystem" versions="all four" />
+        <node name="RenderGameplayEffectsManagerSystem" versions="all four" />
+        <node name="GuardAreaManager" versions="261, 269, 277" />
+        <node name="PreventionSpawnSystem" versions="261, 269, 277" />
+        <node name="PSData" versions="193 only" />
+        <node name="scanningController" versions="193 only" note="In 261 to 277 it does not have this layout." />
+        <node name="questSceneDataHelper" versions="none" note="Does not fit: different layout in the versions that have it (header fields are inconsistent). Not decoded." />
+        <note>The list is what matched in the four saves. Other nodes may use the format and just did not match, or the node may be absent from the sample.</note>
+      </usedBy>
+      <blob>
+        <u32 name="blobSize">Equals the node's own data length minus 8.</u32>
+        <u16 name="unknown1">4 in the stats blobs checked.</u16>
+        <u16 name="unknown2">6 in the stats blobs checked.</u16>
+        <u32 name="rootCount">1 means no root name list.</u32>
+        <u32 name="stringDescriptorsOffset">0 in the stats blobs checked.</u32>
+        <u32 name="stringDataOffset">Also the size of the string descriptor table.</u32>
+        <u32 name="objectDescriptorsOffset" />
+        <u32 name="objectDataOffset" />
+        <array name="rootNames" count="u32" elementType="u64" when="rootCount &gt; 1">The count repeats the header's. In ScriptableSystemsContainer the root names are 64-bit hashes, one per sub-system (16 to 20); the hash function is open.</array>
+        <section name="stringPool" />
+        <section name="objectDescriptors" />
+        <section name="objectData" />
+        <array name="trailingRootNames" count="u32" elementType="u64" optional="true">A blob can have more data after the main blob. The blob size field does not cover it; the node's data ends exactly after it. PSData has it (8,615 hashes in the 193 save). Verified in the 193 PSData; not checked in the other blob nodes.</array>
+        <rule>Offsets inside the blob are relative to base, the position right after the header (and after the root name list, if present).</rule>
+        <rule status="verified">string data offset &lt;= object descriptors offset &lt;= object data offset.</rule>
+      </blob>
+      <stringPool status="verified">
+        <rule>Starts at base. The first stringDataOffset bytes are descriptors, 4 bytes each, so the number of strings is that offset divided by 4.</rule>
+        <rule>Each descriptor is a u32: the low 24 bits are the string's offset from base, the high 8 bits are its length including a terminating zero byte.</rule>
+        <rule>The strings follow the descriptors and are zero-terminated. Every string ended in a zero byte and every index was in range.</rule>
+        <rule>The pool holds class names, field names, type names and also enum values and name (CName) values, so each distinct string appears once.</rule>
+      </stringPool>
+      <objectDescriptor status="verified">
+        <u32 name="nameIndex">A class name from the string pool.</u32>
+        <u32 name="dataOffset">Relative to base; increases from one object to the next; the first equals the object data offset. An object's data ends where the next one's begins; the last one ends at the end of the blob.</u32>
+      </objectDescriptor>
+      <object status="verified">
+        <u16 name="fieldCount">May be 0.</u16>
+        <array name="fieldDescriptors" countField="fieldCount" elementBytes="8">
+          <element>
+            <u16 name="nameIndex" />
+            <u16 name="typeIndex" />
+            <u32 name="dataOffset">Relative to the start of the object.</u32>
+          </element>
+        </array>
+        <section name="fieldData">In descriptor order, no padding.</section>
+        <rule>The first field's offset equals 2 + 8 * count, offsets increase, and each field runs up to the next field's offset (the last to the end of the object).</rule>
+        <rule>An empty object, or a struct with no fields, is just 00 00. Fields that hold the type's default value appear to be left out: array elements often list fewer fields than their class has (for example a skill entry with only currentLevel). Inferred from what was seen and from a comment in CSE.</rule>
+      </object>
+      <valueEncoding>
+        <value type="Bool, Uint8, Int8" encoding="1 byte" />
+        <value type="Uint16, Int16" encoding="2 bytes" />
+        <value type="Uint32, Int32, Float" encoding="4 bytes" />
+        <value type="Uint64, Int64" encoding="8 bytes" />
+        <value type="TweakDBID" encoding="8 bytes" />
+        <value type="CRUID" encoding="8 bytes" />
+        <value type="CName" encoding="u16 index into the string pool" />
+        <value type="NodeRef" encoding="u16 length, then that many characters (a path such as ~/../marker_1)" />
+        <value type="DataBuffer" encoding="u32 length, then that many bytes" />
+        <value type="array:T" encoding="u32 count, then count elements of type T" />
+        <value type="[N]T or static:N,T" encoding="u32 count (equal to N), then N elements of type T. Both spellings occur; PSData uses static:." />
+        <value type="handle:T" encoding="u32 index into the blob's list of objects" />
+        <value type="an enum type, such as gamedataStatType" encoding="u16 index into the string pool; the string is the value name, for example Cool or Nomad" />
+        <value type="anything else (a struct)" encoding="a nested object, in the object layout above" />
+        <note>The sizes of the 1, 2, 4 and 8-byte types come from every occurrence in the sample having exactly that size. Handle indexes were checked to be inside the object list, but not that they point at the class they claim to.</note>
+      </valueEncoding>
+      <enumProblem status="resolved for 2.31 and earlier; types added in 2.5 are not covered">
+        <note>An enum value takes two bytes, and so does an empty struct (00 00); the bytes and the type name do not say which. The game's type data does: a type is an enum if it is in the enum list (cp2077-nativedb enums.json, 1,524 enums). Of 27 names a first parser took for enums, 19 were enums and 8 were structs (gameStatPoolModifier, gameSEquipSlot, UIScriptableSystemAttributeLevel, gameGodModeData, STrait, SAttributeData, SNewPerk, RecipientData). A reader needs that enum list, and it must match the save's game version.</note>
+      </enumProblem>
+      <open>Handle semantics: the root versus handle object split, and what the handle target classes are. The root name hash function. Default values per class (needed to write blobs back). questSceneDataHelper and scanningController (from 261 on), which do not match this layout. Whether other nodes in unseen saves use it.</open>
+    </format>
+    <format name="propertyStream" status="verified">
+      <note>Some nodes store an object as a list of its properties, each carrying the hash of its name and the hash of its type, so a reader can find the property in a class and skip what it does not know. Read from the game's serialiser (FUN_140279248 writes, FUN_1403ea008 reads) with Ghidra and tested on the saves. Verified on 261, 269 and 277: all entries of PersistencySystem2 (88,050, 90,985 and 57,948) parse and consume every byte. Property and type names come from the 2.31 type dump. The 193 save has no PersistencySystem2 (its PSData uses the system blob format).</note>
+      <propertyList>
+        <u64 name="nameHash">FNV-1a 64-bit hash of the property name (for example isInitialized). 0 ends a nested list.</u64>
+        <u64 name="typeHash">FNV-1a 64-bit hash of the property's type name as the game spells it (Bool, TweakDBID, array:Int32, handle:DeviceOperationsContainer, EDeviceStatus, a class name).</u64>
+        <value name="value">Depends on the type.</value>
+      </propertyList>
+      <rule>Only properties that differ from their default are written; the writer skips equal ones and drops a nested object entirely if nothing in it is written. A missing property means default, and the default has to come from the game's class definition, which the save does not contain.</rule>
+      <rule>The top-level list of an entry has no terminator of its own; it ends where the entry's data ends. Entries often end with some u64 zeros (0 to 506 seen, mostly 0 or 1). They are only ever at the end. Why the number varies is open; the likeliest cause is how nested lists in arrays are closed.</rule>
+      <valueEncoding>
+        <value type="Bool, Int8, Uint8" encoding="1 byte" />
+        <value type="Int16, Uint16" encoding="2 bytes" />
+        <value type="Int32, Uint32, Float" encoding="4 bytes" />
+        <value type="Int64, Uint64, CName, TweakDBID, CRUID, NodeRef" encoding="8 bytes. CName and NodeRef are hashes (a name or path is not stored)." />
+        <value type="enum" encoding="The enum's size in bytes, raw value (not a name). 4 for nearly all enums, 1 for vehicleCameraPerspective. The sizes are in the save's TypeDatabase_v2 (table A, kind 0x50)." />
+        <value type="array:T" encoding="u32 count, then count elements. Primitives and enums are packed back to back; a struct element is a nested property list ending in a u64 zero." />
+        <value type="static:N,T and [N]T" encoding="The same as array:T. Only 4 such types occurred in the sample, so this is lightly tested." />
+        <value type="handle:T" encoding="u64: the FNV hash of the actual class of the object (it can be a subclass of T), then a nested property list ending in a u64 zero. A null handle is not written." />
+        <value type="struct or class" encoding="A nested property list ending in a u64 zero." />
+      </valueEncoding>
+      <rule>What decides how to read a type is its kind in the game's type data: primitive, enum, struct or class, array, handle.</rule>
+      <untested>Anything older than the 261 save, and any entry class the three saves do not contain. Arrays whose elements are handles, arrays of arrays and the fixed array types. Writing: nothing was written back and loaded into the game.</untested>
+    </format>
+    <format name="statsSharedBuffer" status="verified on one 277 save only">
+      <note>The 2.5 StatsSystem sharedDataBuffer. The 32,768-byte buffer holds 8,612 bytes of data and is zero-padded after that. The records below consume bytes 0 to 8,612 exactly (190 records), the rest is all zeros, and all 30 slice offsets fall on record boundaries.</note>
+      <slices>
+        <note>sharedBufferSlices entries are {offset u32, combined u32}. combined &amp; 0x3FFFFFFF is the slice's size in bytes; bit 30 is set on some slices (meaning unknown). Slices are contiguous: each offset is the previous offset plus its size, and the last ends at 8,612. A slice is a run of whole records.</note>
+      </slices>
+      <record>
+        <string name="className">Varint length, then characters, as for node names.</string>
+        <class name="gameConstantStatModifier">
+          <u64 name="stat" />
+          <u32 name="modifierType" />
+          <f32 name="value" />
+        </class>
+        <class name="gameCombinedStatModifier">
+          <u64 name="stat" />
+          <u32 name="modifierType" />
+          <u64 name="refStat" />
+          <u32 name="operation" />
+          <u32 name="refObject" />
+          <f32 name="value" />
+        </class>
+        <class name="gameCurveStatModifier">
+          <u64 name="stat" />
+          <u32 name="modifierType" />
+          <string name="curveName" />
+          <string name="columnName" />
+          <u64 name="curveStat" />
+          <u32 name="unknown">0 in all 14 records</u32>
+        </class>
+      </record>
+      <rule>stat is the FNV-1a 64-bit hash of the gamedataStatType value name (for example LootLevel). All 190 records' stat hashes resolved to a name in the 2.31 enum list.</rule>
+      <rule>modifierType is the gameStatModifierType enum index: Additive 0, AdditiveMultiplier 1, Multiplier 2.</rule>
+      <rule>Counts in the sample: 170 constant, 14 curve, 6 combined. Curve records name a game curve table (quality_curves, random_distributions) and a column in it.</rule>
+      <rule>The combined layout is taken from the old deprecated data class's field order and gives plausible values (LootLevel, AdditiveMultiplier, ref stat NPCWeaponDropRandomizer, 1.0); the whole buffer parses with it.</rule>
+      <open>The order of the two u32 in the combined record: read as operation = 0 (Addition) and refObject = 2 (Root), but the in-memory class puts refObject (0x4C) before operation (0x50), which would read as refObject = Self and operation = Multiplication. All 6 records have the same pair, so the data cannot tell them apart. Whether other record classes exist, and the meaning of slice bit 30, need more 2.5 saves or the game code.</open>
+    </format>
+    <rtti status="verified">
+      <note>The game's own list of classes and enums gives what the save files alone cannot: which types are enums, which fields a class has, and which of those the game saves. Source: cp2077-nativedb (MIT), a dump of the game's runtime type information made by RED4.RTTIDumper; cp2077_dump_json.zip and enums.json. Game version of the dump: 2.31 (its gameGameVersion enum ends with CP77_Patch_2_3_Hotfix1 = 2310 and Current = 2310). 15,832 classes and 1,524 enums. The dump stores no default values and no save-format information.</note>
+      <check name="field type name in the save equals the property's type in the dump" result="8,212 of 8,212 matched in every version, no mismatch" objects="3,855" />
+      <check name="field name exists on the class in the dump" result="all but 6" />
+      <check name="classes missing from the dump" result="gameCurveStatModifierData and gameConstantStatModifierData (only in the 193 save, renamed ..._Deprecated later); CyberwareCustomizationSystem (277 save)" />
+      <note>The 6 unknown fields are DataTrackingSystem.achievementsMask in the 193 save (gone by 2.31) and the five new StatsSystem fields in the 277 save. gameSavedStatsDataOptimized and gameBufferSlice (277 only) are also not in the dump. For the nodes tested the field layout was stable from 193 through 2.31 apart from renames and removals; the only structural change found in 2.5 is in the stats system.</note>
+      <savedFieldsRule status="empirical">A property is saved if bit 28 of its 64-bit flags is set (scripted classes) or bit 14 is set (native save structures such as gameStatPoolsSystemSave). All 123 (class, field) pairs that appeared in the saves satisfy it; of the pairs that never appeared, 180 fail it and 47 pass it (consistent with "fields holding their default value are left out"). Derived from the 269 save's classes; not confirmed on other game versions' flags.</savedFieldsRule>
+      <limits>The 2.5 changes (StatsSystem classes, CyberwareCustomizationSystem and anything added after 2.31); default values; native node formats (the dump describes classes inside system blobs, not hand-written binary such as inventory or PersistencySystem2); save version history.</limits>
+      <ghidra exe="Cyberpunk2077.exe" productVersion="2.5" fileVersion="3.0.5813403" size="66704848" tool="Ghidra 12.2 headless, demangler, address-table, switch and a few other analyzers off (a first run with everything on ran out of memory at a 12 GB heap)">
+        <method>Each class has a registration function that sets its name and a second function that registers its properties, one call per field with the field name, the offset in the in-memory object and a type getter. Class-name and field-name strings are found by searching the exe and following their cross-references. Offsets are in-memory offsets, so they give field order and size but not the save layout.</method>
+        <method>All 138 node names were found as plain strings in the exe. Each has a small getter function (about 71 bytes) that returns its name hash, and the functions that call the getter are that node's loader and saver (203 distinct functions across the 138 names, some shared by several nodes). 65 of them compare the save version with constants.</method>
+        <method>Node names are looked up through functions returning the FNV-1a-64 hash of the name. The persistency loader tests the save version against 0xCD (205): below it the old PersistencySystem node is read, from 205 TypeDatabase_v2 and PersistencySystem2; in the old path a check at 0x7C (124) decides whether the id array is present.</method>
+        <method>Stream primitives (vtable calls on the stream object): +0x10 is a raw read or write of size bytes, +0x48 returns the save version, +0x90 means "node exists". FUN_140740168(S,N) means v &gt;= N. Helpers: FUN_1403eaa6c is u32, FUN_1403eaa7c is a CName (u64 if v &gt;= 193), FUN_14027a7c4 is a name (varint string, or a u16 index when the stream has a name table), FUN_14027cab4 is a string, FUN_142f60040 is a varint count.</method>
+        <pitfall>Tail-called helpers can lose their arguments in decompiled text (calls like FUN_14073d53c(); with empty parens, and RD(ptr) with the size dropped). Re-decompile such functions fresh to see the real arguments and reads.</pitfall>
+      </ghidra>
+      <open>A 2.5 RTTI dump: either run RED4.RTTIDumper in the game (needs RED4ext installed into the game folder; needs the maintainer's go-ahead; not done) or read the registrations out of the exe with Ghidra one class at a time.</open>
+    </rtti>
+  </formats>
+  <nodes count="139" note="One entry per node name seen in the 27 saves. firstSeen/lastSeen are the lowest and highest observed save version containing the node (lastSeen absent: still in the newest observed save). repeats=&quot;true&quot;: the name occurs several times within one save. parsedByTools: whether WolvenKit's node list has a parser for the name. Nodes whose names start with a quote (such as &quot;Core&quot;) are child nodes inside other nodes; the quote is part of the stored name. A node entry without &lt;fields&gt; holds only its node id, or its payload is not decoded (see status).">
+    <node name="AchievementSystem" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="achievements" count="u32" elementBytes="32">
+          <note>32 bytes each; the node is only read from save version 257 on (loader gate)</note>
+        </array>
+      </fields>
+    </node>
+    <node name="ActivityCardsSystem" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="data" count="u32" elementBytes="1">
+          <note>0 bytes in every save seen</note>
+        </array>
+      </fields>
+    </node>
+    <node name="AnimationPersistentDataSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="groups" count="u32">
+          <note>n x u64 group ids, then one group per id</note>
+          <column bytes="8" />
+          <column>
+            <parallelArrays name="values" count="u32">
+              <note>second array of each group is n x u32</note>
+              <column bytes="8" />
+              <column bytes="4" />
+            </parallelArrays>
+          </column>
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="AnimationPersistentDataSystem_InstancedCrowdBlend" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="ids" count="u32" elementBytes="8">
+          <note>0 in every save seen</note>
+        </array>
+      </fields>
+    </node>
+    <node name="Animations" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <note>Layout from game code functions 140987984, 140988054, 14098811c, 1409881fc, 140988408.</note>
+      <fields>
+        <array name="groups" count="u32">
+          <element>
+            <u64 name="key" />
+            <array name="poses" count="u32">
+              <element>
+                <u64 name="key" />
+                <bytes name="transform" size="28">7 x u32 read one by one, then repacked by the game (probably a position and a quaternion)</bytes>
+                <array name="entries" count="u32">
+                  <note>21 bytes each</note>
+                  <element>
+                    <u64 name="key" />
+                    <u32 name="a" />
+                    <u32 name="b" />
+                    <u32 name="c" />
+                    <u8 name="d" />
+                  </element>
+                </array>
+              </element>
+            </array>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="ArcadeSystem" status="verified" instances="23" firstSeen="261" parsedByTools="yes">
+      <fields>
+        <array name="values" count="u32" elementType="f32">
+          <note>3 floats in every save seen</note>
+        </array>
+      </fields>
+    </node>
+    <node name="CameraComponentRenderLayer" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="layers" count="varint">
+          <note>ids first (n x u64), then n camera lists</note>
+          <column>
+            <u64 name="id" />
+          </column>
+          <column>
+            <parallelArrays name="cameras" count="varint">
+              <note>second column is one flag byte per camera name</note>
+              <column>
+                <string name="name" />
+              </column>
+              <column bytes="1" />
+            </parallelArrays>
+          </column>
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="CarrySystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="carried" count="u32" elementBytes="80">
+          <note>80 raw bytes each; the saver writes them as one block</note>
+        </array>
+      </fields>
+    </node>
+    <node name="CAttitudeManager" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="groups" count="u32">
+          <note>node is read from save version 98 on</note>
+          <element>
+            <u64 name="group">hash of the attitude group</u64>
+            <u32 name="kind">0, 1 or 2 in every save seen</u32>
+          </element>
+        </array>
+        <u16 name="a">0xFFFF in every save seen</u16>
+        <u32 name="b">0xFFFFFFFF in every save seen</u32>
+        <array name="overrides1" count="u32">
+          <note>empty in every save seen</note>
+          <element>
+            <u64 name="id">element layout from the game code: u64, u16, u32, then lists; untested</u64>
+          </element>
+        </array>
+        <array name="overrides2" count="u32">
+          <note>empty in every save seen</note>
+          <element>
+            <u64 name="id">element layout not decoded; untested</u64>
+          </element>
+        </array>
+        <array name="overrides3" count="u32">
+          <note>empty in every save seen</note>
+          <element>
+            <u64 name="id">element layout not decoded; untested</u64>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="CCoverManager" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="covers" count="u32">
+          <note>game code reads (u64, u64, u8) per entry</note>
+          <element>
+            <u64 name="key">looks like a hash</u64>
+            <u64 name="value">small number, 0x89.... or 0x98.... in the saves seen</u64>
+            <u8 name="flag">0 in the samples</u8>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="CharacetrCustomization_Appearances" status="verified" firstSeen="193" parsedByTools="yes">
+      <note>The misspelling is the game's. Stores the character's appearance choices. No children. Parsed with this layout in all 24 saves: every byte of every node was consumed. The layout comes from CSE and CyberCAT. The first list has 4 groups in the 193 save and 10 in the others; the second 17, 18, 18 and 35 groups; the third 7 in all; there are 6 mappings in all four. The name list holds cold_white and Buzz in the 277 save (they look like hair colour and hairstyle names; not checked) and was empty in the 261 save. The thresholds 168 and 171 come from CSE and are consistent with the saves but untested at the boundaries.</note>
+      <fields>
+        <u8 name="dataExists">1 in every save seen. If 0, nothing follows the next u32.</u8>
+        <u32 name="unknown1">0 in the 277 save.</u32>
+        <group name="data" when="dataExists != 0">
+          <u32 name="unknown2">13 in the 277 save.</u32>
+          <u8 name="unknown3">0 in the 277 save.</u8>
+          <u8 name="unknown4">0 in the 277 save.</u8>
+          <ref name="characterGroups" type="AppearanceGroupList">Groups such as TPP, FPP, hairs, face.</ref>
+          <ref name="weaponGroups" type="AppearanceGroupList">Groups such as holstered_default_tpp, unholstered_strong.</ref>
+          <ref name="bodyGroups" type="AppearanceGroupList">Groups such as FPP_Body, TPP_Body, character_creation.</ref>
+          <array name="mappings" count="u32" elementType="AppearanceMapping" />
+          <array name="names" count="varint" elementType="string" when="v &gt; 171" />
+        </group>
+      </fields>
+      <open>What the unknown fields mean, and which part of the node holds body type, skin tone, face shape and so on.</open>
+    </node>
+    <node name="choiceHubSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="hubs" count="u32">
+          <note>0 in every save seen</note>
+          <element>
+            <u64 name="a" />
+            <u64 name="b" />
+            <array name="subs" count="u32">
+              <element>
+                <u64 name="a" />
+                <u64 name="b" />
+                <u32 name="c" />
+              </element>
+            </array>
+          </element>
+        </array>
+        <array name="choices" count="u32">
+          <note>0 in every save seen</note>
+          <element>
+            <u64 name="a" />
+            <u64 name="b" />
+            <u32 name="c" />
+            <u64 name="d" />
+          </element>
+        </array>
+        <u8 name="flag">0 in every save seen</u8>
+      </fields>
+    </node>
+    <node name="choices" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="a" count="u32">
+          <element>
+            <u64 name="id" />
+            <array name="entries" count="u32">
+              <element>
+                <u32 name="x" />
+                <u32 name="y" />
+                <u32 name="z" />
+              </element>
+            </array>
+          </element>
+        </array>
+        <array name="b" count="u32" when="v&gt;224">
+          <note>second list; absent in the 193 and 224 saves and present from 261. The exact version where it appears is somewhere in 225 to 261 and not known (the loader gate was not found); 224 is the highest version known to lack it.</note>
+          <element>
+            <u64 name="id" />
+            <array name="entries" count="u32">
+              <element>
+                <u32 name="x" />
+                <array name="values" count="u32" elementBytes="16">
+                  <note>16-byte elements</note>
+                </array>
+              </element>
+            </array>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="CommunitySystem" status="verified" firstSeen="193" parsedByTools="yes">
+      <note>The largest node in every save (1.1 MB in 193, 1.8 to 2.2 MB in the others); no children. It stores the state of the world's communities and crowds. Read from the game's loader and saver in Cyberpunk2077.exe, then verified: the layout consumes every byte in one save of each version (193, 261, 269, 277). Field names are ours; nothing about what the fields mean is known. The thresholds 15, 143, 180, 254 and 124 are from the game's loader; the saves straddle 180 and 254 (193 has no records list, 261 and later do) and confirm those; the others are untested here because all four saves are above 15, 124 and 143.</note>
+      <fields>
+        <array name="aKeys" count="u32" elementType="u64">10,289 in 277.</array>
+        <repeat name="aValues" over="aKeys">
+          <note>For each key, in order: a list of ids, then for each id in it a leaf followed by a string (the string is "default" in the first one seen).</note>
+          <array name="ids" count="u32" elementType="u64" />
+          <repeat name="perId" over="ids">
+            <ref name="leaf" type="CommunityLeaf" />
+            <string name="text" />
+          </repeat>
+        </repeat>
+        <array name="bKeys" count="u32" elementType="u64">744 in 277.</array>
+        <repeat name="bLeaves" over="bKeys">
+          <ref name="leaf" type="CommunityLeaf" />
+          <note>One leaf per key, in order, with no string.</note>
+        </repeat>
+        <array name="c" count="u32">
+          <note>140 in 277.</note>
+          <element>
+            <u64 name="id" />
+            <bytes name="data" size="64" />
+            <u32 name="value" />
+            <array name="records" count="u32" elementBytes="12" />
+          </element>
+        </array>
+        <array name="d" count="u32" elementBytes="12">
+          <note status="untested">0 in all four saves; layout read from the game's saver only.</note>
+        </array>
+        <array name="e" count="u32">
+          <note status="untested">0 in all four saves; layout read from the game's saver only.</note>
+          <element>
+            <string name="text" />
+            <u8 name="value" />
+          </element>
+        </array>
+        <array name="f" count="u32" elementBytes="16" when="v &gt;= 124">
+          <note>0 in 193, 261 and 277; 486 in 269.</note>
+        </array>
+      </fields>
+      <open>The loader also has an extra branch for save versions 16 to 41 that was not read.</open>
+    </node>
+    <node name="ComponentsStateSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="ComponetsState" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="components" count="varint">
+          <note>ids first (n x u64), then n name lists; same layout as CameraComponentRenderLayer</note>
+          <column>
+            <u64 name="id" />
+          </column>
+          <column>
+            <parallelArrays name="names" count="varint">
+              <note>second column is one flag byte per name</note>
+              <column>
+                <string name="name" />
+              </column>
+              <column bytes="1" />
+            </parallelArrays>
+          </column>
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="ContainerManager" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <note>Map of container id to its recorded contents. Layout from game code function 14073a1b8 and element reader 14218ec40.</note>
+      <fields>
+        <array name="containers" count="u32">
+          <element>
+            <u64 name="id">container entity id</u64>
+            <u16 name="index">0xffff in every save seen</u16>
+            <array name="entries" count="varint" when="v&gt;=261">
+              <note>read from save version 261 on</note>
+              <element>
+                <u64 name="tweakDbId" />
+                <u32 name="rngSeed" />
+                <u8 name="a" when="v&gt;96" />
+                <u16 name="b" when="v&gt;189" />
+                <u8 name="c" when="v&gt;220" />
+                <u32 name="count" />
+                <u64 name="kind">TweakDBID/CName</u64>
+                <u32 name="a" />
+                <u32 name="b" when="v&gt;=192" />
+                <array name="tags" count="varint">
+                  <element>
+                    <string name="tag">e.g. Ammo, ShowStackPrice, Currency</string>
+                  </element>
+                </array>
+                <array name="items" count="varint">
+                  <note>item ids held by the container</note>
+                  <element>
+                    <u64 name="tweakDbId" />
+                    <u32 name="rngSeed" />
+                    <u8 name="a" when="v&gt;96" />
+                    <u16 name="b" when="v&gt;189" />
+                    <u8 name="c" when="v&gt;220" />
+                  </element>
+                </array>
+                <u8 name="flag" when="v&gt;262" />
+              </element>
+            </array>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="ContainerManager_InjectedLoot" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <parallelArrays name="containers" count="varint">
+          <note>n x u64 container ids, then for each a list of injected items; fields after the first four are gated by save version</note>
+          <column bytes="8" />
+          <column>
+            <array name="items" count="varint">
+              <element>
+                <u64 name="tweakDbId" />
+                <u32 name="quantity">probably</u32>
+                <u8 name="a" />
+                <u8 name="b" when="v&gt;118" />
+                <u16 name="c" when="v&gt;219" />
+                <array name="tags" count="varint" when="v&gt;235">
+                  <element>
+                    <string name="tag" />
+                  </element>
+                </array>
+                <u64 name="source" when="v&gt;238">TweakDBID</u64>
+                <u32 name="sourceSeed" when="v&gt;238" />
+                <u32 name="sourceOther" when="v&gt;238 and v&gt;=192" />
+                <u8 name="d" when="v&gt;262" />
+              </element>
+            </array>
+          </column>
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="ContainerManager_LootReinitBuffer" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <parallelArrays name="buffers" count="varint">
+          <note>n x u64 ids, then n records; node is read from save version 238 on</note>
+          <column bytes="8" />
+          <column>
+            <array name="items" count="varint" elementType="u64">
+              <note>CNames</note>
+            </array>
+            <u8 name="a" />
+            <u8 name="b" />
+            <u8 name="c" when="v&gt;246" />
+          </column>
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="ContainerManager_LootSlotAvailability" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <parallelArrays name="slots" count="varint">
+          <note>two parallel arrays after one count: n x u64 ids, then n x u8 flags</note>
+          <column bytes="8" />
+          <column bytes="1" />
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="ContainerManager_NPCLootBags_Ver2" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="bags" count="varint">
+          <note>empty (one 0 byte) in every save after 193, so only the 193 layout is tested; the gates above come from the game code</note>
+          <element>
+            <string name="name">e.g. arasakaDropBag</string>
+            <bytes name="position" size="12">3 x f32 probably</bytes>
+            <array name="items" count="varint">
+              <element>
+                <u64 name="tweakDbId" />
+                <u32 name="quantity">probably</u32>
+                <u8 name="a" />
+                <u8 name="b" when="v&gt;118" />
+                <u16 name="c" when="v&gt;219" />
+                <array name="tags" count="varint" when="v&gt;235">
+                  <element>
+                    <string name="tag" />
+                  </element>
+                </array>
+                <u64 name="source" when="v&gt;238" />
+                <u32 name="sourceSeed" when="v&gt;238" />
+                <u32 name="sourceOther" when="v&gt;238" />
+                <u8 name="d" when="v&gt;262" />
+                <u64 name="extraId" when="v&gt;188" />
+                <u32 name="extraValue" when="v&gt;188" />
+              </element>
+            </array>
+            <u64 name="id" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="ContainerManager_NPCLootBags_Ver3_LootedIDs" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="ids" count="varint" elementType="u64">
+          <note>ids of looted bags; node is read from save version 103 on</note>
+        </array>
+      </fields>
+    </node>
+    <node name="ControlledLootIntroduction" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <note>Nested map; layout from game code functions 14073ac0c and 140740530. Field meanings unknown.</note>
+      <fields>
+        <array name="groups" count="u32">
+          <element>
+            <u32 name="key" />
+            <u32 name="a" />
+            <u32 name="b" />
+            <u16 name="c" when="v&lt;253" />
+            <u16 name="d" when="v&lt;253" />
+            <u32 name="c" when="v&gt;=253" />
+            <u32 name="d" when="v&gt;=253" />
+            <array name="entries" count="u32">
+              <element>
+                <u32 name="key" />
+                <u16 name="p" when="v&lt;253" />
+                <u16 name="q" when="v&lt;253" />
+                <u32 name="p" when="v&gt;=253" />
+                <u32 name="q" when="v&gt;=253" />
+                <u32 name="r" when="v&gt;=268" />
+                <u32 name="s" when="v&gt;=268" />
+              </element>
+            </array>
+          </element>
+        </array>
+        <group name="legacyMap" when="v&lt;253">
+          <array name="legacy" count="u32">
+            <note>untested: only read below save version 253, from game code</note>
+            <element>
+              <u32 name="key" />
+              <u16 name="p" />
+              <u16 name="q" />
+            </element>
+          </array>
+        </group>
+        <u32 name="trailer">read after the map, from save version 245 on; differs per save, looks like a hash or seed</u32>
+      </fields>
+    </node>
+    <node name="&quot;Core&quot;" status="verified" instances="47" firstSeen="193" repeats="true" parsedByTools="no">
+      <fields>
+        <group name="delay" when="_len==4">
+          <note>child of DelaySystem: 4 bytes</note>
+          <u32 name="value">child of DelaySystem</u32>
+        </group>
+        <group name="time" when="_len==20">
+          <note>child of TimeSystem: 20 bytes</note>
+          <u32 name="a" />
+          <u32 name="b" />
+          <u64 name="gameTime">f64 seconds (looks like it)</u64>
+          <u32 name="scale">f32 (0.26 in one save)</u32>
+        </group>
+      </fields>
+    </node>
+    <node name="countersState" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u32 name="value" />
+      </fields>
+    </node>
+    <node name="currentFocusMode" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u32 name="mode" />
+      </fields>
+    </node>
+    <node name="customArray" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="values" count="u32" elementType="u16">
+          <note>loader 14073a0d0 reads the count, then count x 2 bytes in one block</note>
+        </array>
+      </fields>
+    </node>
+    <node name="DelamainTaxi" status="verified" instances="21" firstSeen="269" parsedByTools="no">
+      <fields>
+        <bytes name="position" size="12">3 x f32 probably; all zero in every save seen</bytes>
+      </fields>
+    </node>
+    <node name="delayedReveals" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="entries" count="u32">
+          <note>0 in every save seen</note>
+          <element>
+            <u64 name="a" />
+            <u64 name="b" />
+            <cname name="name" />
+            <u32 name="c" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="&quot;DelayedStructs&quot;" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="queues" count="u32">
+          <note>queue count, 4 in every save seen</note>
+          <element>
+            <array name="entries" count="u32">
+              <element>
+                <u8 name="kind" />
+                <u32 name="a" />
+                <u32 name="b" />
+                <u32 name="c" />
+              </element>
+            </array>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="DelayedTicks" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="groups" count="u32">
+          <note>1 group in every save; the group list is saved as a count then each group</note>
+          <element>
+            <array name="ticks" count="u32">
+              <note>inner list empty in every save seen</note>
+              <element>
+                <u8 name="kind" />
+                <u32 name="a" />
+                <u32 name="b" />
+                <u32 name="c" />
+              </element>
+            </array>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="DelaySystem" status="verified" instances="23" firstSeen="261" parsedByTools="yes">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="DelaySystem_V2" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="DestructionPersistencySystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="destroyed" count="u32" elementType="u64">
+          <note>ids of destroyed objects</note>
+        </array>
+        <array name="sizes" count="u32" elementType="u32">
+          <note>8 entries in every save seen</note>
+        </array>
+        <parallelArrays name="objects" count="u32" when="v&gt;197">
+          <note>four parallel arrays after one count: n x u64, n x u64, n x u64, n x u32; present in the saves from 261 on, absent in the 193 save (the exact version where it appears is between them, probably 198 from the loader gates)</note>
+          <column bytes="8" />
+          <column bytes="8" />
+          <column bytes="8" />
+          <column bytes="4" />
+        </parallelArrays>
+        <parallelArrays name="groups" count="u32" when="v&gt;197">
+          <note>two parallel arrays after one count: n x u32, then n x 32 bytes</note>
+          <column bytes="4" />
+          <column bytes="32" />
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="DeviceSystem" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="DirectorSystem" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="scenes" count="u32">
+          <element>
+            <string name="scene" />
+            <u8 name="flag" />
+            <string name="tier" />
+            <u32 name="extra">the game always writes 0 here</u32>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="DS_DynamicConnections" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <parallelArrays name="devices" count="varint">
+          <note>n x u64 device ids, then n records</note>
+          <column bytes="8" />
+          <column>
+            <string name="name" />
+            <countedArrays name="links">
+              <note>two varint counts, then two arrays of u64 ids</note>
+              <array count="varint" elementBytes="8" />
+              <array count="varint" elementBytes="8" />
+            </countedArrays>
+            <bytes name="position" size="12">3 x f32 probably</bytes>
+            <string name="tag" when="v&gt;=185">only from save version 185</string>
+          </column>
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="DynamicEntityIDSystem" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <u32 name="nextId">counter in the 10,000,000 range</u32>
+        <u32 name="nextId2" when="v&gt;7">counter in the 9,000,000 range</u32>
+        <array name="c" count="u32" elementType="u32" />
+        <!-- c: the game checks the count is below 1001. 0 in every save from 261 on; 1 in the 224 save (one u32, 9,999,000 range). -->
+        <array name="names" count="u32">
+          <element>
+            <string name="name">entity name, e.g. p_q001_04_ripperdoc_...</string>
+            <u32 name="id" />
+          </element>
+        </array>
+        <u32 name="trailer" />
+      </fields>
+    </node>
+    <node name="EffectSpawnerSavedata" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="spawners" count="u32">
+          <note>the loader has a second version gate at save version 242 that no save on this machine exercises</note>
+          <element>
+            <u64 name="id" />
+            <string name="effect">e.g. radio_idle, dust_01, blood, hit_wall</string>
+            <string name="tag">"None" or a second name</string>
+            <u64 name="extra" />
+            <u8 name="f1" />
+            <u8 name="f2" />
+            <u8 name="f3" />
+            <u8 name="f4" />
+            <u8 name="f5" />
+            <u32 name="x">f32 probably</u32>
+            <u32 name="y">f32 probably</u32>
+            <array name="pairs" count="u32">
+              <element>
+                <u32 name="a" />
+                <u32 name="b" />
+              </element>
+            </array>
+            <u32 name="z" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="entitiesState" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="entities" count="u32">
+          <element>
+            <u64 name="id" />
+            <group name="state0">
+              <string name="a" />
+              <string name="b" />
+              <u32 name="c" />
+              <u32 name="d" />
+              <string name="e" />
+              <u32 name="f" />
+              <u32 name="g" />
+              <string name="h" />
+              <string name="i" />
+              <u32 name="j" />
+              <u32 name="k" />
+              <u32 name="l" />
+              <u8 name="m" />
+              <u8 name="n" />
+              <u32 name="o" />
+              <u32 name="p" />
+              <string name="q" />
+              <string name="r" />
+              <u32 name="s" />
+              <u32 name="t" />
+              <u32 name="u" />
+              <u32 name="v" />
+              <u8 name="w" />
+              <u32 name="x" />
+            </group>
+            <group name="state1">
+              <string name="a" />
+              <string name="b" />
+              <u32 name="c" />
+              <u32 name="d" />
+              <string name="e" />
+              <u32 name="f" />
+              <u32 name="g" />
+              <string name="h" />
+              <string name="i" />
+              <u32 name="j" />
+              <u32 name="k" />
+              <u32 name="l" />
+              <u8 name="m" />
+              <u8 name="n" />
+              <u32 name="o" />
+              <u32 name="p" />
+              <string name="q" />
+              <string name="r" />
+              <u32 name="s" />
+              <u32 name="t" />
+              <u32 name="u" />
+              <u32 name="v" />
+              <u8 name="w" />
+              <u32 name="x" />
+            </group>
+            <group name="state2">
+              <string name="a" />
+              <string name="b" />
+              <u32 name="c" />
+              <u32 name="d" />
+              <string name="e" />
+              <u32 name="f" />
+              <u32 name="g" />
+              <string name="h" />
+              <string name="i" />
+              <u32 name="j" />
+              <u32 name="k" />
+              <u32 name="l" />
+              <u8 name="m" />
+              <u8 name="n" />
+              <u32 name="o" />
+              <u32 name="p" />
+              <string name="q" />
+              <string name="r" />
+              <u32 name="s" />
+              <u32 name="t" />
+              <u32 name="u" />
+              <u32 name="v" />
+              <u8 name="w" />
+              <u32 name="x" />
+            </group>
+            <array name="items" count="u32">
+              <note>pairs of item ids</note>
+              <element>
+                <u64 name="key" />
+                <u64 name="tweakDbId" />
+                <u32 name="rngSeed" />
+                <u8 name="a" when="v&gt;96" />
+                <u16 name="b" when="v&gt;189" />
+                <u8 name="c" when="v&gt;220" />
+                <u64 name="tweakDbId2" />
+                <u32 name="rngSeed2" />
+                <u8 name="a2" when="v&gt;96" />
+                <u16 name="b2" when="v&gt;189" />
+                <u8 name="c2" when="v&gt;220" />
+              </element>
+            </array>
+            <array name="list2" count="u32">
+              <element>
+                <u64 name="id" />
+                <string name="name" />
+                <bytes name="position" size="12" />
+                <string name="s2" />
+                <u32 name="a" />
+                <u8 name="b" />
+                <u32 name="c" />
+                <u32 name="d" />
+                <u32 name="e" />
+                <u32 name="f" />
+                <u32 name="g" />
+                <u32 name="h" />
+                <u32 name="i" />
+                <u32 name="j" />
+                <u32 name="k" />
+                <array name="things" count="u32">
+                  <element>
+                    <string name="name" />
+                    <u32 name="a" />
+                    <u32 name="b" />
+                    <u32 name="c" />
+                  </element>
+                </array>
+                <u32 name="l" />
+                <u32 name="m" />
+              </element>
+            </array>
+            <array name="list3" count="u32">
+              <element>
+                <u64 name="id" />
+                <string name="name" />
+                <bytes name="position" size="12" />
+                <u32 name="a" />
+                <u32 name="b" />
+                <u32 name="c" />
+                <u32 name="d" />
+                <string name="s" />
+                <u32 name="e" />
+                <u32 name="f" />
+                <u32 name="g" />
+                <u32 name="h" />
+                <u32 name="i" />
+                <u32 name="j" />
+              </element>
+            </array>
+            <array name="list4" count="u32">
+              <element>
+                <u64 name="id" />
+                <string name="name" />
+                <u8 name="flag" />
+              </element>
+            </array>
+            <u8 name="flagA" />
+            <u8 name="hasExtra" when="v&gt;193">not present in the 193 save</u8>
+            <group name="extra" when="v&gt;193 and hasExtra!=0">
+              <note>only when hasExtra is not 0</note>
+              <bytes name="block" size="16" />
+              <u32 name="a" />
+              <u32 name="b" />
+              <u32 name="c" />
+              <u32 name="d" />
+              <u64 name="e" />
+              <u64 name="f" />
+              <u64 name="g" />
+            </group>
+          </element>
+        </array>
+        <array name="flags" count="u32">
+          <element>
+            <u8 name="a" />
+            <u64 name="b" />
+          </element>
+        </array>
+        <array name="ids" count="u32" elementType="u64" />
+      </fields>
+    </node>
+    <node name="eventManager" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="events" count="u32">
+          <note>loader 14073a024 reads the count, then count x 16 bytes in one block; the split into u64, u32, u32 is a guess</note>
+          <element>
+            <u64 name="key" />
+            <u32 name="a" />
+            <u32 name="b" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="FactsDB" status="verified" firstSeen="193" parsedByTools="yes">
+      <note>The parent of the fact tables. Children are the FactsTable nodes. CyberCAT mentions a blob of trailing bytes after the last table; whether the saves have one was not checked.</note>
+      <fields>
+        <u8 name="tableCount">Equals the number of FactsTable children (10 in every save tested).</u8>
+      </fields>
+      <open>Whether FactsDB can have trailing data in a save with changes in quest sections not yet seen.</open>
+    </node>
+    <node name="FactsTable" status="verified" firstSeen="193" repeats="true" parsedByTools="yes">
+      <note>A table of quest facts (named integers). No children. Verified. Fact names are not stored, only hashes (CRC-32 of each fact's name, per CSE and CyberCAT; not re-derived here); showing readable names needs a separate list of known fact names. Hashes are sorted ascending in all 40 tables tested. Up to about 6,500 facts per table were seen.</note>
+      <fields>
+        <parallelArrays name="facts" count="varint">
+          <column name="hash" bytes="4" />
+          <column name="value" bytes="4" />
+          <note>One count, then all hashes, then all values in the same order.</note>
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="FadeOutSave" status="verified" instances="4" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u8 name="flag">1 in every save seen</u8>
+        <u32 name="value">all bits set in every save seen (0xFF in the first byte)</u32>
+      </fields>
+    </node>
+    <node name="&quot;ForbiddenArea&quot;" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="areas" count="u32" elementBytes="16">
+          <note>16 bytes each: an 8-byte hash, then 8 bytes that look like a raw pointer, so they differ between saves</note>
+        </array>
+      </fields>
+    </node>
+    <node name="game::SessionConfig" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <u64 name="a" />
+        <u64 name="sessionId">differs per save</u64>
+        <string name="district">e.g. 03_night_city</string>
+        <u64 name="d">8 bytes that look like an f64</u64>
+        <u32 name="e" />
+        <u64 name="f" when="v&gt;218" />
+      </fields>
+    </node>
+    <node name="GameAudio" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields />
+      <trailing>
+        <string name="state" when="v&gt;193">"None" in every save that has it; absent in the 193 save</string>
+      </trailing>
+    </node>
+    <node name="GameSessionDesc" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="godModeSystem" status="verified" format="systemBlob" firstSeen="193" parsedByTools="yes">
+      <note>System blob in all four versions. Loader threshold: 78.</note>
+    </node>
+    <node name="GPSSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields />
+      <trailing>
+        <repeatToEnd>
+          <bytes name="position" size="12">3 x f32, one entry per child node</bytes>
+        </repeatToEnd>
+      </trailing>
+    </node>
+    <node name="GuardAreaManager" status="verified" format="systemBlob" firstSeen="261" parsedByTools="no">
+      <note>System blob in 261, 269, 277. Loader threshold: 230.</note>
+    </node>
+    <node name="HandicapAmmoInContainers" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="records" count="varint" elementBytes="8">
+          <note>0 in every save seen</note>
+        </array>
+      </fields>
+    </node>
+    <node name="inspectionServices" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="services" count="u32">
+          <element>
+            <u64 name="id" />
+            <u32 name="a" />
+            <array name="list1" count="u32">
+              <element>
+                <string name="name" />
+                <u32 name="v" />
+              </element>
+            </array>
+            <array name="list2" count="u32">
+              <element>
+                <string name="name" />
+                <u32 name="v" />
+              </element>
+            </array>
+            <array name="list3" count="u32">
+              <element>
+                <string name="name" />
+                <u32 name="v" />
+              </element>
+            </array>
+            <u32 name="b" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="instances" status="verified" firstSeen="193" parsedByTools="no">
+      <note>The state of the game's scene system: one record per scene instance (for example cs_sm_homeless_trashcan_player_scene). Read from the game's loader in Cyberpunk2077.exe (patch 2.5, about 45 small functions, addresses in source attributes). Verified on all 24 local saves (193, 261, 269, 277): the parser reads the node id, the instance count and every instance and ends exactly at the end of the node. A separate check found each instance's start by its text (three en-us strings in a row) and the parser's end position matched the next instance's start for every instance in four saves (one of each version: 9, 21, 60 and 23 boundaries). The parts marked untested are not exercised by any local save: either every local array of that kind is empty or the game only reads that branch below save version 193. The game's loader also looks for further optional sections after the instance list; none of the 24 saves contains one.</note>
+      <fields>
+        <u32 name="instanceCount">24 (193), 22 (261), 61 (269), 2 to 60 (277).</u32>
+        <repeat name="instances" countField="instanceCount">
+          <u64 name="keyA" />
+          <u64 name="keyB">Together a pair that identifies the instance; meaning open.</u64>
+          <ref name="header" type="InstanceHeader" />
+          <group name="body" source="0x14073e810">
+            <group name="queue" source="0x14073d53c">
+              <u8 name="flag" />
+              <array name="entries" count="u32">
+                <element>
+                  <u32 name="a" />
+                  <u8 name="b" />
+                  <u8 name="c" />
+                  <u8 name="d" />
+                  <u8 name="m">The byte just before the u64 list.</u8>
+                  <array name="values" countField="m" elementType="u64" />
+                </element>
+              </array>
+            </group>
+            <group name="settings" source="0x14073f044">
+              <u32 name="a" />
+              <u32 name="b" />
+              <u64 name="c" />
+              <u8 name="d" when="v &gt;= 29" />
+              <array name="names" count="u32" elementType="name" when="v &gt;= 40" />
+              <u8 name="e" when="v &gt;= 56" />
+              <array name="groups" count="u32" when="v &gt;= 84">
+                <element>
+                  <group name="group" source="0x1411f6724">
+                    <array name="first" count="u32">
+                      <element>
+                        <u64 name="a" />
+                        <u32 name="b" />
+                        <u32 name="c" />
+                        <u32 name="d" />
+                        <u32 name="e" />
+                      </element>
+                    </array>
+                    <array name="second" count="u32">
+                      <element>
+                        <u32 name="a" />
+                        <u32 name="b" />
+                        <u32 name="c" />
+                        <u32 name="d" />
+                      </element>
+                    </array>
+                  </group>
+                  <u64 name="x" />
+                  <u32 name="y" />
+                </element>
+              </array>
+              <ref name="list1" type="InstanceListX" />
+              <ref name="list2" type="InstanceListX" />
+              <ref name="list3" type="InstanceListX" when="v &gt;= 148" />
+            </group>
+            <group name="rules" when="v &gt;= 44" source="0x1401d8e18 then 0x14073ef58">
+              <u8 name="a" />
+              <u8 name="b" when="v &gt;= 145" />
+              <array name="options" count="u32" status="untested" source="0x142fca9d8">
+                <note>No local save has an element. Option: u8, u8 kind; if kind is 9: name, u32; if kind is 10: name, u8; otherwise nothing.</note>
+                <element>
+                  <u8 name="a" />
+                  <u8 name="kind" />
+                  <switch on="kind">
+                    <case value="9">
+                      <string name="name" />
+                      <u32 name="value" />
+                    </case>
+                    <case value="10">
+                      <string name="name" />
+                      <u8 name="value" />
+                    </case>
+                  </switch>
+                </element>
+              </array>
+              <u8 name="c" />
+              <ref name="rules" type="InstanceRules" when="v &gt;= 76" />
+              <group name="text" when="v &gt;= 90" source="0x1401d8448">
+                <u8 name="flag" />
+                <array name="lines" count="u32" elementType="InstanceLine" />
+              </group>
+              <u8 name="d" when="v &gt;= 90" />
+              <u8 name="e" when="v &gt;= 142" />
+              <note status="untested">Between versions 56 and 62 the game reads one more function here (0x142d05a24).</note>
+            </group>
+            <group name="counters" when="v &gt;= 62" source="0x14073d6f8">
+              <ref name="sets" type="InstanceSets" />
+              <u8 name="flag" />
+              <group name="a" when="v &gt;= 127">
+                <u8 name="a" />
+                <u32 name="b" />
+                <u32 name="c" />
+                <note>The decompiler lost the size of the first read; one byte is the only size for which all instance boundaries match. Below 127 the game reads different fields; untested.</note>
+              </group>
+              <array name="entries" count="u32">
+                <element>
+                  <u32 name="a" />
+                  <u8 name="b" />
+                  <u32 name="c" />
+                  <u8 name="d" />
+                  <u8 name="e" when="v &gt;= 113" />
+                  <u8 name="f" when="v &gt;= 113" />
+                </element>
+              </array>
+            </group>
+            <group name="events" when="v &gt;= 198" source="0x14073dd48">
+              <array name="events" count="u32">
+                <note status="partial">Two events in all local saves. The layouts for kind 1 (both sub kinds) and kind 10 come from the game's code; the sizes of the trailing fields are read from the decompiler and may be wrong.</note>
+                <element source="0x141933ccc">
+                  <u32 name="a" />
+                  <u16 name="b" />
+                  <u16 name="c" />
+                  <u32 name="d" />
+                  <u8 name="kind" />
+                  <switch on="kind">
+                    <case value="1">
+                      <u8 name="sub" />
+                      <switch on="sub">
+                        <case value="1">
+                          <u8 name="a" />
+                          <u32 name="b" />
+                          <bytes name="c" size="8" />
+                        </case>
+                        <case value="2">
+                          <string name="name" />
+                          <bytes name="c" size="1" />
+                        </case>
+                      </switch>
+                    </case>
+                    <case value="10">
+                      <u32 name="a" />
+                      <u16 name="b" />
+                      <u16 name="c" />
+                      <u64 name="d" />
+                      <bytes name="e" size="1" />
+                    </case>
+                  </switch>
+                </element>
+              </array>
+            </group>
+          </group>
+        </repeat>
+      </fields>
+      <types>
+        <type name="InstanceListX" source="0x14073e8b0" status="verified">
+          <array name="first" count="u32" elementType="InstanceItemP" />
+          <u32 name="second">A count only. The game makes that many one-byte slots and stores nothing from the file in them.</u32>
+          <array name="third" count="u32" elementType="InstanceItemQ" />
+        </type>
+        <type name="InstanceItemP" source="0x140740064" status="verified">
+          <u8 name="a" />
+          <u64 name="b" />
+          <u32 name="c" />
+          <u64 name="d" when="v &gt;= 33" />
+          <u64 name="e" when="v &gt;= 123" />
+          <u32 name="f" />
+          <u32 name="g" />
+          <u8 name="h" />
+          <u32 name="i" />
+        </type>
+        <type name="InstanceItemQ" source="0x142d3c6ec" status="verified">
+          <u32 name="a" />
+          <string name="name" />
+          <u16 name="b" />
+          <u16 name="c" />
+          <u32 name="d" />
+          <u8 name="e" />
+          <u64 name="f" />
+        </type>
+        <type name="InstanceRules" source="0x1401d87e8" status="verified">
+          <u32 name="a" />
+          <u32 name="b" />
+          <u8 name="c" />
+          <u8 name="d" />
+          <u8 name="e" />
+          <u32 name="f" />
+          <u32 name="g" />
+          <u32 name="h" />
+          <u8 name="i" />
+          <u32 name="j" />
+          <u32 name="k" />
+          <group name="table" source="0x1401d8994">
+            <u32 name="a" />
+            <u32 name="b" />
+            <u32 name="c" />
+            <array name="ids" count="u32" elementType="u32" />
+            <array name="triples" count="u32" elementType="InstanceTriple" />
+          </group>
+          <array name="rows" count="u8" source="0x142d377fc">
+            <element>
+              <u32 name="a" />
+              <u32 name="b" when="v &gt;= 127" />
+              <array name="list1" count="u32" elementType="InstanceTriple" />
+              <array name="list2" count="u32" elementType="InstanceTriple" />
+              <array name="list3" count="u32" elementType="InstanceTriple" />
+            </element>
+          </array>
+          <u8 name="m" when="v &gt;= 90" />
+          <u32 name="n" when="v &gt;= 90" />
+        </type>
+        <type name="InstanceSets" source="0x14073da70" status="verified">
+          <array name="ids" count="u32" elementType="InstanceId" />
+          <array name="pairLists" count="u32">
+            <element>
+              <u64 name="key" />
+              <group name="pairList" source="0x14073d8d8">
+                <array name="first" count="u32" elementType="InstanceTriple" />
+                <array name="second" count="u32" elementType="InstanceTriple" />
+                <u32 name="x" when="v &gt;= 127" />
+              </group>
+            </element>
+          </array>
+          <array name="triples" count="u32">
+            <element>
+              <ref name="triple" type="InstanceTriple" />
+              <u8 name="a" />
+              <u32 name="b" />
+            </element>
+          </array>
+        </type>
+      </types>
+      <open>What the key pair is, and what the many small fields mean; nothing here is named by the game's data (the names are only to tell fields apart). The branches for save versions below 193, which are marked untested. Whether any save has the optional sections after the instance list. Writing the node back: not tried.</open>
+    </node>
+    <node name="InterestingConversations" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="conversations" count="u32">
+          <element>
+            <array name="items" count="u32">
+              <element>
+                <u32 name="kind" />
+                <u64 name="id" />
+                <string name="a" />
+                <string name="b" when="kind in (0,1)">only when kind is 0 or 1</string>
+                <string name="c" when="kind==0">only when kind is 0</string>
+                <u8 name="flag" />
+              </element>
+            </array>
+            <u64 name="a" />
+            <u64 name="b" />
+            <u64 name="c" />
+            <u8 name="d" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="inventory" status="verified" firstSeen="193" parsedByTools="yes">
+      <note>Children are all itemData nodes, one per item, in order. An inventory cannot be read from its own data alone: the item id headers and sub-inventory records live between the child ranges (in the sibling gaps that the container keeps as After bytes). The first item's header is in the node's own data before the first child; the bytes after each child up to the next sibling hold the next header or the next sub-inventory record.</note>
+      <fields>
+        <u32 name="subInventoryCount">5 to 13 in the saves.</u32>
+        <repeat name="subInventories" countField="subInventoryCount">
+          <u64 name="id">1 is the first, 1,000,000 (0xF4240) the second; others look like hashes or entity ids. What each one is, is open.</u64>
+          <u32 name="itemCount">May be 0.</u32>
+          <repeat name="items" countField="itemCount">
+            <ref name="header" type="ItemID">The same record that starts the child itemData (after its node id). In all four versions every header equals the first bytes of its child.</ref>
+            <child node="itemData" />
+          </repeat>
+        </repeat>
+      </fields>
+      <trailing status="verified">
+        <note>The sub-inventory records (u64 id, u32 itemCount = 0) of the sub-inventories that come after the last item: 24 or 36 bytes in some 277 saves, nothing in the others. Verified on all 24 saves: the own bytes, the gaps after each child and these trailing bytes are consumed exactly by the sub-inventory structure above.</note>
+      </trailing>
+      <evidence>Children are in sub-inventory order; the item counts add up to the number of children in every save tested. Header equality verified in all four versions.</evidence>
+      <open>What each sub-inventory id means (player, stash, vehicles and so on).</open>
+    </node>
+    <node name="IsInMirrorsAreaSave" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="entities" count="varint">
+          <note>two parallel arrays after one count: n x u64 ids, then n x u8 flags</note>
+          <column bytes="8" />
+          <column bytes="1" />
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="itemData" status="verified" firstSeen="193" repeats="true" parsedByTools="yes">
+      <note>One item. No children. The kind rule and field order come from CSE (itemData.h) and CyberCAT; with them all itemData nodes in one save of each version were consumed exactly. Kind counts in the 193 save: kind 0 = 7, kind 1 = 51, kind 2 = 165; the other versions' counts are in the same ranges. What kinds 0, 1 and 2 mean in game terms (for example whether kind 2 is gear) has not been checked against item names.</note>
+      <fields>
+        <ref name="itemId" type="ItemID" />
+        <u8 name="flags" />
+        <u32 name="unknown" />
+        <computed name="kind" from="itemId.kindByte, itemId.seed">
+          <rule when="kindByte == 1" value="2" />
+          <rule when="kindByte == 2" value="1" />
+          <rule when="kindByte == 3" value="0" />
+          <rule when="otherwise" value="seed != 2 ? 2 : 1" />
+        </computed>
+        <u32 name="quantity" when="kind != 2">Present for kinds 0 and 1.</u32>
+        <group name="modRoot" when="kind != 1">
+          <note>Present for kinds 0 and 2. Mod root header (16 bytes): TweakDBID, u32 unknown, f32 unknown; then the mod tree.</note>
+          <tweakDBID name="record" />
+          <u32 name="unknown" />
+          <f32 name="unknown2" />
+          <ref name="modTree" type="ItemMod" />
+        </group>
+      </fields>
+      <open>The meaning of the seed, flags and unknown fields in the item record and the item.</open>
+    </node>
+    <node name="ItemDropStorage" status="verified" instances="309" firstSeen="193" repeats="true" parsedByTools="yes">
+      <fields>
+        <string name="name">"None" in every save seen</string>
+        <u8 name="flag" />
+        <u32 name="a" />
+        <bytes name="b" size="12">three u32/f32</bytes>
+        <u32 name="c" />
+        <u32 name="d" />
+        <u32 name="e" />
+        <u32 name="f" />
+        <u32 name="itemCount">number of items; each item is an itemData child node of this node</u32>
+        <note>Only the first item's header is in this node's data (its fields below are present when itemCount is not 0). Each item is written as a 15-byte header (cname, x, y, z; w when v&gt;220) followed by its itemData child node, so the header of item N+1 sits in the gap (SaveNode.After) after child N. Seen in saves from game 1.03 and 1.04: 1 item in nearly all instances, 2 and 6 in one instance each. The count matches the number of itemData children in all of them.</note>
+        <cname name="item" when="itemCount!=0" />
+        <u32 name="x" when="itemCount!=0" />
+        <u8 name="y" when="itemCount!=0 and v&gt;96" />
+        <u16 name="z" when="itemCount!=0 and v&gt;189" />
+        <u8 name="w" when="itemCount!=0 and v&gt;220" />
+      </fields>
+    </node>
+    <node name="ItemDropStorageManager" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <u32 name="count">number of child nodes</u32>
+      </fields>
+      <trailing>
+        <u32 name="trailer">written after the child nodes; 0 in every save seen</u32>
+      </trailing>
+    </node>
+    <node name="JournalManager" status="verified" firstSeen="193" parsedByTools="yes">
+      <note>Quest journal state; no children. 13 KB (277) to 71 KB (269). Read from the game's loader and saver, then verified: this layout consumes every byte in all 24 saves (all four versions). Field names are ours. The thresholds 24, 107, 111, 119, 121, 217, 232 and 234 come from the loader. 193 is the only save below 217 and above 111; the thresholds below 111, the 107 to 110 form of list B and the versions between 193 and 261 are untested. In the current-version saver the lists are written in the same order as here.</note>
+      <fields>
+        <array name="entries" count="u32" when="v &gt;= 217">
+          <note>15 bytes each. id is unique within the node (880 distinct of 880 in 277); the game looks entries up by this value; it is a hash, not a name.</note>
+          <element>
+            <u32 name="id" />
+            <u32 name="state">1 to 4 only (780 of 880 are 2 in the 277 save). Probably a journal entry state (inactive, active, succeeded, failed); not confirmed.</u32>
+            <u32 name="time">46 distinct values in 277, 43200 the most common (577 times); 43200 is 12 hours in seconds, which suggests a game-time stamp in seconds. Not confirmed.</u32>
+            <u16 name="count">Mostly 0 to 15. Meaning unknown.</u16>
+            <u8 name="flag">0 or 1.</u8>
+          </element>
+        </array>
+        <array name="entries" count="u32" when="v &lt; 217">
+          <note>16 bytes each; the same first three u32 and a fourth u32 that packs the last two fields (28 bits and 4 bits), as the loader unpacks it. Only the 193 save has this form here, and it parsed exactly.</note>
+          <element>
+            <u32 name="id" />
+            <u32 name="state" />
+            <u32 name="time" />
+            <u32 name="packed" />
+          </element>
+        </array>
+        <u32 name="unknown1" />
+        <array name="listA" count="u32" elementType="u64" when="v &gt; 24" />
+        <array name="listB" count="u32" elementBytes="16" when="v &gt;= 111" />
+        <array name="listBOld" count="u32" elementType="u64" when="v &gt;= 107 and v &lt;= 110" status="untested" />
+        <array name="listC" count="u32" elementBytes="16" when="v &gt; 119" />
+        <array name="listD" count="u32" elementType="u64" when="v &gt; 232" />
+        <u32 name="unknown2" when="v &gt; 121" />
+        <array name="listE" count="u32" elementType="u32" when="v &gt;= 234" />
+      </fields>
+    </node>
+    <node name="LevelAssignmentSystem_Ver1" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <f32 name="level">probably the level</f32>
+        <array name="names" count="varint" elementBytes="8">
+          <note>0 in every save seen; followed by the same number of u16 values (untested)</note>
+        </array>
+      </fields>
+    </node>
+    <node name="LevelGainedAggregator" status="verified" instances="5" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="levels" count="varint">
+          <note>n x u32 levels, then n x f32 values (looks like street-cred or XP thresholds)</note>
+          <column bytes="4" />
+          <column bytes="4" />
+        </parallelArrays>
+        <u32 name="last" />
+      </fields>
+    </node>
+    <node name="LocalPlayer" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u32 name="classHash">0x15982adf in every save seen</u32>
+        <u32 name="size">28 in every save seen</u32>
+        <bytes name="state" size="32">8 x f32 probably: a position and an orientation</bytes>
+      </fields>
+    </node>
+    <node name="LootManager_PersistentTables" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="tables" count="u32">
+          <note>node is read from save version 232 on (loader gate)</note>
+          <element>
+            <u64 name="table">CName of a loot table (length&lt;&lt;32 | FNV-1a-32 of the name)</u64>
+            <array name="items" count="varint" elementType="u64">
+              <note>CNames of items</note>
+            </array>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="LootManager_PlaythroughSeed" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <u32 name="seed">differs per save</u32>
+      </fields>
+    </node>
+    <node name="MappinSystem_CustomPos" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <f32 name="x" />
+        <f32 name="y" />
+        <f32 name="z" />
+      </fields>
+    </node>
+    <node name="MappinSystem_DelamainMappin" status="verified" instances="21" firstSeen="269" parsedByTools="no">
+      <fields>
+        <u64 name="hash">0 in the 277 save</u64>
+      </fields>
+    </node>
+    <node name="MappinSystem_POI" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="pois" count="u32">
+          <note>two parallel arrays after one count: n x u32 hashes, then n x 6 bytes (meaning of the 6 bytes unknown)</note>
+          <column bytes="4" />
+          <column bytes="6" />
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="MappinSystem_SavedStealthMappinData" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="mappins" count="u32">
+          <element>
+            <u64 name="id" />
+            <u8 name="state" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="MappinSystem_TrackedMappin" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u64 name="hash">0 in most saves</u64>
+      </fields>
+    </node>
+    <node name="MappinSystem_UnlockedLocations" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u32 name="count">0 in every save seen; element layout not traced</u32>
+      </fields>
+    </node>
+    <node name="MappinSystemRefactored" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="mappins" count="u32">
+          <note>two parallel arrays after one count: n x u32 hashes, then n x u8 flags (the second array is absent when n is 0)</note>
+          <column bytes="4" />
+          <column bytes="1" />
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="ModdingSystem" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <u8 name="value">0 in every save seen</u8>
+      </fields>
+    </node>
+    <node name="MountingStorage" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <parallelArrays name="mounts" count="u32">
+          <note>three parallel arrays of n x u64, one after the other</note>
+          <column bytes="8" />
+          <column bytes="8" />
+          <column bytes="8" />
+        </parallelArrays>
+      </fields>
+    </node>
+    <node name="MovingPlatformSystem" status="verified" format="systemBlob" firstSeen="193" parsedByTools="yes">
+      <note>System blob in all four versions. Loader threshold: 17.</note>
+    </node>
+    <node name="MusicSystem" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <string name="current">"None" when no music state is active</string>
+        <group name="active" when="current!='None'">
+          <note>only when current is not None</note>
+          <string name="trigger" />
+          <u8 name="a" />
+          <string name="stopTrigger" />
+          <string name="b" />
+          <u8 name="c" />
+          <u8 name="d" />
+          <string name="event">e.g. music_activated</string>
+          <u32 name="extra">the game always writes 0 here</u32>
+        </group>
+      </fields>
+    </node>
+    <node name="nodeInstanceDataManager" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="nodes" count="u32">
+          <note>16 bytes each; node is read from save version 20 on</note>
+          <element>
+            <u16 name="a" />
+            <u16 name="b" />
+            <u32 name="hash" />
+            <u64 name="id" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="ObjectCarrySystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="carried" count="u32">
+          <element>
+            <bytes name="transform" size="32" />
+            <string name="legacyName" when="v&lt;=199">"None"; only up to save version 199</string>
+            <u64 name="id" />
+            <u64 name="legacyCName" when="v&lt;=199">only up to save version 199</u64>
+            <u8 name="legacyFlag" when="v&lt;=199">only up to save version 199</u8>
+            <u32 name="legacyValue" when="v&lt;=199">only up to save version 199</u32>
+          </element>
+        </array>
+        <array name="objects" count="u32">
+          <note>kind 1, 2 and 3 carry a 32-byte transform block; other kinds carry nothing more</note>
+          <element>
+            <u64 name="id" />
+            <u8 name="a" />
+            <u8 name="kind" />
+            <switch on="kind">
+              <case value="1">
+                <u64 name="b" />
+                <bytes name="transform" size="32" />
+                <string name="name" />
+              </case>
+              <case value="2">
+                <u64 name="b" />
+                <bytes name="transform" size="32" />
+              </case>
+              <case value="3">
+                <bytes name="transform" size="32" />
+              </case>
+            </switch>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="PathInstance_PlayerTracked_v1" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="PathInstance_Quest_v1" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="PersistencySystem" status="partial" firstSeen="193" lastSeen="193" parsedByTools="yes">
+      <note>Save version below 205 (193). Has PSData children, which hold the persistent state (see the PSData node). The node ends after the id array.</note>
+      <fields>
+        <array name="ids" count="u32" elementType="u32" when="v &gt; 124">
+          <note>1,454 ids in the 193 save. All unique, not sorted, values around 9,000,000 (0x89xxxx) and the value 1. The loader puts them in a set. What they identify is open. The game tests 124 (0x7C) to decide whether the array exists (from the game's code).</note>
+        </array>
+      </fields>
+    </node>
+    <node name="PersistencySystem2" status="verified" firstSeen="261" parsedByTools="yes">
+      <note>From save version 205 (261 and later). No children; everything is in the node's own data. Verified: the layout consumes every byte of the node in 261, 269 and 277 and all persistent ids are unique. The entry data is a property stream (see formats/propertyStream).</note>
+      <fields>
+        <array name="ids" count="u32" elementType="u32">
+          <note>1,681 (261), 2,161 (269), 102 (277). Same kind of id set as PersistencySystem.</note>
+        </array>
+        <u32 name="skipSize">0 in all three saves. The loader skips this many bytes if it is not 0.</u32>
+        <u32 name="entryCount">140,463 (261), 117,945 (269), 70,068 (277).</u32>
+        <repeat name="entries" countField="entryCount">
+          <u64 name="persistentId">If 0 the entry ends here (8 bytes, nothing follows). Such empty entries are common: 52,413 of 140,463 in 261; 26,960 in 269; 12,120 in 277. What they stand for is open.</u64>
+          <group name="body" when="persistentId != 0">
+            <u64 name="classHash">FNV-1a 64-bit hash of the class name. All 141, 145 and 124 distinct classes in 261, 269, 277 match a class name in the 2.31 type dump. The classes are the ...PS persistent-state classes, for example LootContainerObjectAnimatedByTransformPS, BaseDestructibleControllerPS, DoorControllerPS, TVControllerPS.</u64>
+            <blob name="data" format="propertyStream">u32 size (0 to about 6,400 bytes), then the object's state as a property list. Of the entries, 88,050 (261), 90,985 (269) and 57,948 (277) have a non-zero id; all parse as property streams and consume their data exactly.</blob>
+          </group>
+        </repeat>
+      </fields>
+      <note>The same loader converts old entries when the stored TypeDatabase_v2 hash differs from the game's: it reads each entry with the stored layout and writes it back with the current one.</note>
+      <note>Unlocked vehicles: the entry whose classHash is FNV-1a of vehicleGarageComponentPS holds the property unlockedVehicleArray (type array:vehicleUnlockedVehicle). Each element is 56 bytes: vehicleID (struct vehicleGarageVehicleID) holding recordID (TweakDBID = CRC-32 of the record name, then its length), then two u64 zero terminators; a health float is left out at its default. Verified on the 261, 269 and 277 saves (100 to 105 elements): all record ids match the vehicle record names from CP2077SaveEditor's list, and the array can contain the same vehicle more than once (101 elements, 75 distinct, in one save). Writing was tested only by reading the rewritten file back, not in the game. If the property is missing (no vehicle unlocked) RelicWriter does not add it. Save version 193 keeps this in PSData and is not read.</note>
+    </node>
+    <node name="PhantomEntity" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="entries" count="u32">
+          <note>0 in every save seen</note>
+          <element>
+            <u64 name="id" />
+            <cname name="name" />
+            <u8 name="a" />
+            <u8 name="b" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="PhoneManager" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <bytes name="state" size="20" when="v&lt;201" />
+        <bytes name="state" size="32" when="201&lt;=v&lt;207" />
+        <bytes name="state" size="40" when="207&lt;=v&lt;243" />
+        <bytes name="state" size="48" when="243&lt;=v&lt;277" />
+        <bytes name="state" size="56" when="v&gt;=277" />
+        <string name="contact">e.g. #holocalls_studio; empty in the 277 saves</string>
+        <string name="extra" when="v&gt;136" />
+      </fields>
+    </node>
+    <node name="PhotoMode_BugFixing" status="verified" instances="20" firstSeen="277" parsedByTools="no">
+      <fields>
+        <group name="sectionA">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <array name="flags" count="u32" elementType="u8">
+                <note>empty in every save seen</note>
+              </array>
+            </element>
+          </array>
+        </group>
+        <group name="sectionB">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <array name="flags" count="u32" elementType="u8">
+                <note>empty in every save seen</note>
+              </array>
+            </element>
+          </array>
+        </group>
+      </fields>
+    </node>
+    <node name="PhotoMode_LightSettings" status="verified" instances="21" firstSeen="269" parsedByTools="no">
+      <fields>
+        <group name="sectionA">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <array name="list1" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <u8 name="a" />
+                  <bytes name="f" size="40">ten u32/f32</bytes>
+                  <u32 name="b" />
+                  <u8 name="c" />
+                  <bytes name="g" size="12" />
+                </element>
+              </array>
+              <array name="list2" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <u32 name="a">size of this field was not recoverable; 4 assumed</u32>
+                  <u8 name="b" />
+                  <bytes name="c" size="12" />
+                  <u8 name="d" />
+                  <bytes name="e" size="20" />
+                  <u32 name="f" />
+                </element>
+              </array>
+              <u32 name="x" />
+              <u32 name="y" />
+            </element>
+          </array>
+        </group>
+        <group name="sectionB">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <array name="list1" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <u8 name="a" />
+                  <bytes name="f" size="40">ten u32/f32</bytes>
+                  <u32 name="b" />
+                  <u8 name="c" />
+                  <bytes name="g" size="12" />
+                </element>
+              </array>
+              <array name="list2" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <u32 name="a">size of this field was not recoverable; 4 assumed</u32>
+                  <u8 name="b" />
+                  <bytes name="c" size="12" />
+                  <u8 name="d" />
+                  <bytes name="e" size="20" />
+                  <u32 name="f" />
+                </element>
+              </array>
+              <u32 name="x" />
+              <u32 name="y" />
+            </element>
+          </array>
+        </group>
+      </fields>
+    </node>
+    <node name="PhotoMode_NewStickersEditor" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <array name="sets" count="u32">
+          <note>3 in every save; the game writes the count as the constant 3</note>
+          <element>
+            <array name="values" count="varint" elementBytes="4" />
+          </element>
+        </array>
+        <array name="sets" count="u32">
+          <note>3 in every save; the game writes the count as the constant 3</note>
+          <element>
+            <array name="values" count="varint" elementBytes="4" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="PhotoMode_OutfitWeather" status="verified" instances="21" firstSeen="269" parsedByTools="no">
+      <fields>
+        <group name="sectionA">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <array name="list1" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <u32 name="a">size of this field was not recoverable; 4 assumed</u32>
+                  <u32 name="b" />
+                  <bytes name="v1" size="12" />
+                  <bytes name="v2" size="12" />
+                  <bytes name="v3" size="12" />
+                </element>
+              </array>
+              <array name="list2" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <bytes name="v" size="12" />
+                  <u32 name="a" />
+                  <u32 name="b" />
+                  <u32 name="c" />
+                  <u32 name="d" />
+                </element>
+              </array>
+            </element>
+          </array>
+        </group>
+        <group name="sectionB">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <array name="list1" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <u32 name="a">size of this field was not recoverable; 4 assumed</u32>
+                  <u32 name="b" />
+                  <bytes name="v1" size="12" />
+                  <bytes name="v2" size="12" />
+                  <bytes name="v3" size="12" />
+                </element>
+              </array>
+              <array name="list2" count="u32">
+                <note>empty in every save seen</note>
+                <element>
+                  <bytes name="v" size="12" />
+                  <u32 name="a" />
+                  <u32 name="b" />
+                  <u32 name="c" />
+                  <u32 name="d" />
+                </element>
+              </array>
+            </element>
+          </array>
+        </group>
+      </fields>
+    </node>
+    <node name="PhotoMode_PresetsBugFixing" status="verified" instances="20" firstSeen="277" parsedByTools="no">
+      <fields>
+        <group name="sectionA">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <bytes name="a" size="12">3 x f32 probably</bytes>
+              <bytes name="b" size="12" />
+              <bytes name="c" size="12" />
+            </element>
+          </array>
+        </group>
+        <group name="sectionB">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <bytes name="a" size="12">3 x f32 probably</bytes>
+              <bytes name="b" size="12" />
+              <bytes name="c" size="12" />
+            </element>
+          </array>
+        </group>
+      </fields>
+    </node>
+    <node name="PhotoMode_QuestRequest" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="requests" count="u32">
+          <note>0 in every save seen</note>
+          <element>
+            <string name="name" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="PhotoMode_Settings" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <group name="sectionA">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <string name="name">empty in every save seen</string>
+              <array name="a" count="varint" elementType="u32">
+                <note>empty in every save seen</note>
+              </array>
+              <array name="b" count="varint" elementBytes="16">
+                <note>empty in every save seen</note>
+              </array>
+              <u32 name="id">-1 in every save seen</u32>
+              <string name="mode">"None" in every save seen</string>
+              <bytes name="params" size="28">seven u32/f32, zero in every save seen</bytes>
+            </element>
+          </array>
+        </group>
+        <group name="sectionB">
+          <array name="entries" count="u32">
+            <note>the game writes the constant 3</note>
+            <element>
+              <string name="name">empty in every save seen</string>
+              <array name="a" count="varint" elementType="u32">
+                <note>empty in every save seen</note>
+              </array>
+              <array name="b" count="varint" elementBytes="16">
+                <note>empty in every save seen</note>
+              </array>
+              <u32 name="id">-1 in every save seen</u32>
+              <string name="mode">"None" in every save seen</string>
+              <bytes name="params" size="28">seven u32/f32, zero in every save seen</bytes>
+            </element>
+          </array>
+        </group>
+      </fields>
+    </node>
+    <node name="photoModeSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="ids" count="varint" elementBytes="8">
+          <note>u64 ids</note>
+        </array>
+      </fields>
+    </node>
+    <node name="playerObjectListenerMapper" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="listeners" count="u32">
+          <note>node is read from save version 164 on</note>
+          <element>
+            <u32 name="id" />
+            <u32 name="hash" />
+            <u8 name="flag">1 in the samples seen</u8>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="PlayerSystem" status="verified" firstSeen="193" parsedByTools="yes">
+      <note>20 bytes (including the node id), no children, in all four saves. From the game's loader, then checked against the saves for 193, 261, 269 and 277.</note>
+      <fields>
+        <u64 name="playerEntityId" when="v &gt;= 101">1 in all four saves. The loader looks the entity up by this id.</u64>
+        <u32 name="playerEntityId" when="v &lt; 101" status="untested">Below 101 (0x65) the loader reads a single u32 and has no name field. Not tested; all saves are above.</u32>
+        <cname name="name" when="v &gt;= 101">A name (CName) of the player's puppet or spawn; 0 in the 277 save. Not resolved: the values 0x199db17687, 0x279241c18c and 0x28e32266b4 have small high halves (25, 39, 40), which fits (length &lt;&lt; 32 | 32-bit hash), but none of them matches a name in the 2.31 type dump with that scheme.</cname>
+      </fields>
+    </node>
+    <node name="PreventionSpawnSystem" status="verified" format="systemBlob" firstSeen="261" parsedByTools="no">
+      <note>System blob in 261, 269, 277. Loader threshold: 237.</note>
+    </node>
+    <node name="ProgressAggregator_v1" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <string name="id">16 hex digits</string>
+      </fields>
+    </node>
+    <node name="ProgressAggregator_v2" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <string name="buildStamp">game build, e.g. "3.0.5813403  P4CL: 13555055  Stream: //R6.Root/R6.Release "</string>
+      </fields>
+    </node>
+    <node name="ProgressAggregator_v3" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <string name="id">quest-progress string such as q001_jackie_talk; empty in the 193 save</string>
+      </fields>
+    </node>
+    <node name="ProgressAggregator_v5" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <string name="a">empty in the 277 saves</string>
+        <string name="b">16 hex digits</string>
+      </fields>
+    </node>
+    <node name="ProgressAggregator_v6" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <u8 name="value">0 in every save seen</u8>
+      </fields>
+    </node>
+    <node name="PSData" status="verified" format="systemBlob" firstSeen="193" lastSeen="193" parsedByTools="yes">
+      <note>Save version 193 only (a child of PersistencySystem; 5,786,758 bytes, no children). The old persistent-state store; newer saves use PersistencySystem2. Decoded as a system blob with a trailing root-name list. Verified on the one 193 save that has the node: every part parses and consumes every byte.</note>
+      <summary>
+        <stat name="rootNames" value="127,384" note="u64 hashes, all different, none 0" />
+        <stat name="strings" value="2,764" />
+        <stat name="objects" value="167,295" note="in 119 root classes plus 41 more classes" />
+        <stat name="trailingRootNames" value="8,615" />
+        <stat name="structTypes" value="54" />
+        <stat name="enumTypes" value="40" />
+      </summary>
+      <rule>The first 127,384 objects belong to the 127,384 root names, one each, in order. Their classes are ...PS persistent-state classes such as gameScanningComponentPS (22,886), gameVisionModeComponentPS (21,623), gameStatsComponentPS (15,403), gameInventoryPS (9,107) and BaseDestructibleControllerPS (5,381). The other 39,911 objects are reached only through handles, for example DeviceOperationsContainer (12,713) and PlayEffectDeviceOperation (7,320).</rule>
+      <rule>All handle indexes are inside the object list (the largest is the last object).</rule>
+      <rule>Every object's field offsets are consistent and every field value parses with the system blob rules. Field type names are the game's (Bool, EDeviceStatus, array:handle:DeviceOperationBase, static:4,vehicleWheelRuntimePSData, Vector3, gameCommunityID and so on).</rule>
+      <rule>A type is read as an enum if it is in the 2.31 enum list. Every enum value found is a valid value of its enum in that list. A struct whose only content is empty looks the same as an enum, so this check shows the lists agree, not that no empty struct was taken for an enum.</rule>
+      <rule>Arrays of structs: an element's size is not stored; a reader finds an element's end by parsing it (the end of its last field).</rule>
+      <open>What the root hashes identify (the hash did not show up in the object data in a sample check). Writing the data back.</open>
+    </node>
+    <node name="questContentSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u32 name="a" />
+        <f32 name="b" />
+        <array name="ids" count="u32" elementBytes="8">
+          <note>u64 ids. The loader has a second path below save version 204 with 16-byte elements, but the 193 save already uses 8 bytes, so that path is for older saves that are not tested</note>
+        </array>
+        <array name="records" count="u32" elementBytes="24">
+          <note>24-byte elements</note>
+        </array>
+        <u32 name="c" when="v&gt;85" />
+      </fields>
+    </node>
+    <node name="questDebugLogManager" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <string name="log">text log of quest events, one line per event, the newest last; the game keeps it for debugging</string>
+      </fields>
+    </node>
+    <node name="QuestMusicHistory" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="entries" count="u32" elementBytes="32">
+          <note>element is 32 raw bytes, and part of it looks like uninitialised memory (pointer fragments), so it is not stable between saves; empty before 277</note>
+        </array>
+      </fields>
+    </node>
+    <node name="questPhaseFreezer" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <blob name="data">u32 size then an opaque inner structure; node is read from save version 135 on</blob>
+      </fields>
+    </node>
+    <node name="questPrefabsHandler" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="prefabs" count="u32">
+          <note>node is read from save version 22 on</note>
+          <element>
+            <u32 name="id" />
+            <bytes name="hash" size="12">the same 12 bytes in every element of every save seen</bytes>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="QuestProgressedAggregator" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u32 name="legacy" when="v&lt;218">only present before save version 218</u32>
+        <f32 name="value" />
+        <array name="quests" count="varint">
+          <element>
+            <string name="id">e.g. q004</string>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="QuestProgressedAggregator_v2" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="quests" count="varint">
+          <element>
+            <string name="id">e.g. ma_std_rcr_01</string>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="QuestProgressedAggregator_v3" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="entries" count="u32">
+          <element>
+            <string name="id">e.g. q001_active, "q001_wakako_street_cred reward"</string>
+            <f32 name="value" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="questSceneDataHelper" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <blob name="data">u32 size then an opaque inner structure (see the inner layout notes)</blob>
+      </fields>
+    </node>
+    <node name="questSystem" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="QueuedData" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="a" count="varint" elementType="u64">
+          <note>empty in every save seen</note>
+        </array>
+        <array name="b" count="u32" elementType="u32">
+          <note>empty in every save seen</note>
+        </array>
+      </fields>
+    </node>
+    <node name="RadioSystem" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <string name="station">name of the current radio station, or None</string>
+      </fields>
+    </node>
+    <node name="ReactionSystem" status="verified" instances="23" firstSeen="261" parsedByTools="yes">
+      <fields>
+        <array name="a" count="varint" elementBytes="32">
+          <note>32-byte elements; empty in every save seen</note>
+        </array>
+        <array name="b" count="varint" elementBytes="8">
+          <note>u64 ids</note>
+        </array>
+        <array name="c" count="varint" elementBytes="16">
+          <note>16-byte elements; empty in every save seen</note>
+        </array>
+      </fields>
+    </node>
+    <node name="ReactionSystem_v2" status="verified" instances="23" firstSeen="261" parsedByTools="yes">
+      <fields>
+        <array name="records" count="varint" elementBytes="16">
+          <note>0 in every save seen; element size taken from the game code, not tested</note>
+        </array>
+      </fields>
+    </node>
+    <node name="RenderGameplayEffectsManagerSystem" status="verified" format="systemBlob" firstSeen="193" parsedByTools="yes">
+      <note>System blob in all four versions. Loader thresholds: 131, 166.</note>
+    </node>
+    <node name="scanningController" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <blob name="saveData">a serialised gameScanningControllerSaveData object (u32 size, then the bytes); its class name is visible inside</blob>
+        <f32 name="value" when="v&gt;=227">1.0 in every save that has it</f32>
+        <string name="name" when="v&gt;=228">"None" in every save that has it</string>
+      </fields>
+    </node>
+    <node name="SceneSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="ScriptableSystemsContainer" status="verified" format="systemBlob" firstSeen="193" parsedByTools="yes">
+      <note>16 to 20 root objects, one per sub-system, plus handle objects. The root names are 64-bit hashes (one per sub-system); per CSE the first that-many objects are the root objects, and the remaining objects are handle objects that roots point at. The hash function was not checked. Holds player development: attributes (Cool, Intelligence, Reflexes, Strength, TechnicalAbility each 20 in the 277 save), skills with a current level (CoolSkill 60 and so on) and a lifePath (Nomad); this matches metadata.9.json (level 60, life path Nomad). Entity ids look like { "hash": 1 }; the owner of the player development data is 1. Loader threshold: 3.</note>
+    </node>
+    <node name="StatPoolsSystem" status="verified" format="systemBlob" firstSeen="193" parsedByTools="yes">
+      <note>One object, gameStatPoolsSystemSave, with mapping: array:gameStatsObjectID and statPools: array:gameStatPoolData. A pool has ownerID, recordID, type (an enum such as Health), modifiers (a fixed array of two gameStatPoolModifier), stat, maxValue, changeMode and currentValue. The same structure decodes in all four versions. Verified structurally; whether editing currentValue is safe in the game is not tested. Loader threshold: 6.</note>
+    </node>
+    <node name="StatsDataSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u32 name="value">3 in every save</u32>
+      </fields>
+    </node>
+    <node name="StatsSystem" status="verified" format="systemBlob" firstSeen="193" parsedByTools="yes">
+      <note>A system blob (see formats/systemBlob). One root object, gameStatsStateMapStructure, plus child objects. It changes shape between versions. Sizes: 167 KB (193), 380 KB (261), 561 KB (269), 45 KB (277). The loader has thresholds 52, 165, 226 and 276; 276 is the shared-buffer layout (between the 269 and 277 saves).</note>
+      <layout saveVersions="193, 261, 269">
+        <field name="keys" type="array:gameStatsObjectID" />
+        <field name="values" type="array:gameSavedStatsData">Each entry has a recordID (TweakDBID) and a seed, with modifier objects reached by handle. A constant modifier has statType, modifierType and a value float, for example DamageReductionExplosion, Additive, 0.35.</field>
+        <note>Modifier classes: gameConstantStatModifierData, gameCurveStatModifierData. From 261 the names end in _Deprecated.</note>
+      </layout>
+      <layout saveVersions="277">
+        <field name="valuesOptimized" type="array:gameSavedStatsDataOptimized">Entries hold bufferSliceIndices, inactiveStatsIndices, entityHash, seed and idType (such as ItemID). Each entry points at one or more slices of sharedDataBuffer.</field>
+        <field name="sharedBufferSlices" type="array:gameBufferSlice" />
+        <field name="sharedInactiveStats" type="array:gamedataStatType" />
+        <field name="sharedRecordId" type="array:TweakDBID" />
+        <field name="sharedDataBuffer" type="DataBuffer">See formats/statsSharedBuffer.</field>
+        <note>The 2.5 layout is a compact rewrite: modifiers are packed into one shared buffer instead of being one object each; there are no modifier objects as separate objects.</note>
+      </layout>
+      <rtti source="Ghidra on the 2.5 exe (in-memory offsets give field order and size, not the save layout)">
+        <class name="gameStatsStateMapStructure">
+          <member name="keys" offset="0x30" />
+          <member name="values" offset="0x40" />
+          <member name="valuesOptimized" offset="0x50" />
+          <member name="sharedBufferSlices" offset="0x60" />
+          <member name="sharedInactiveStats" offset="0x70" />
+          <member name="sharedRecordId" offset="0x80" />
+          <member name="sharedDataBuffer" offset="0x90" />
+        </class>
+        <class name="gameSavedStatsDataOptimized">
+          <member name="statModifiers" offset="0x00" note="array; not seen in our save, probably not saved" />
+          <member name="bufferSliceIndices" offset="0x10" note="array" />
+          <member name="inactiveStatsIndices" offset="0x20" note="array" />
+          <member name="entityHash" offset="0x30" size="8" />
+          <member name="seed" offset="0x38" />
+          <member name="recordIDIndex" offset="0x3C" size="2" />
+          <member name="idType" offset="0x3E" size="1" />
+        </class>
+        <class name="gameBufferSlice">
+          <member name="offset" offset="0x0" size="4" />
+          <member name="combined" offset="0x4" size="4" />
+        </class>
+        <note>Field sizes come from the gaps between offsets, not from the type getters, which were not followed. For the old combined modifier class the in-memory order is refStatType 0x48, refObject 0x4C, operation 0x50, value 0x54 (all 4 bytes).</note>
+      </rtti>
+      <open>The game's writer for the shared buffer was not found (the runtime modifier classes have no registered properties).</open>
+    </node>
+    <node name="TelemetrySystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="tierSystem" status="verified" format="systemBlob" firstSeen="193" parsedByTools="yes">
+      <note>System blob in all four versions. Loader threshold: 30.</note>
+    </node>
+    <node name="&quot;Timers&quot;" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="timers" count="u32">
+          <note>timers scheduled by the game; node is read from save version 21 on</note>
+          <element>
+            <u8 name="kind">1 in every save seen; kind 2 exists in the game code with another layout</u8>
+            <switch on="kind">
+              <case value="1">
+                <u32 name="a" />
+                <u32 name="b" />
+                <u32 name="c" />
+                <string name="name1">"None" in every save seen</string>
+                <string name="name2">"None" in every save seen</string>
+                <u8 name="d" />
+                <u32 name="e" />
+              </case>
+              <default>
+                <undecoded>unknown kind</undecoded>
+              </default>
+            </switch>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="TimeSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields />
+      <trailing>
+        <u64 name="gameTime">f64 seconds (looks like it)</u64>
+        <u8 name="flag" />
+        <u64 name="clock">f64 seconds (looks like it)</u64>
+      </trailing>
+    </node>
+    <node name="TransformAnimator" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <note>Holds only the node id.</note>
+      <fields />
+    </node>
+    <node name="TutorialManager" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="ids" count="u32" elementBytes="4" />
+      </fields>
+    </node>
+    <node name="TypeDatabase_v2" status="verified" firstSeen="261" parsedByTools="no">
+      <note>No children; in saves 261, 269 and 277, not in 193. The save carries its own table of types: the loader compares the node's type table hash with the running game's. If they match it reads the persistent objects directly; if not it rebuilds the type table and remaps. The loader only reads this node when the save version is 205 or above. The sizes add up exactly: 24 + 20*A + 8*B + 12*C equals the blob size in 261, 269 and 277 (115,188, 117,448 and 117,612 bytes), so the node has nothing else in it. Names are hashes (FNV-1a 64-bit).</note>
+      <fields>
+        <u32 name="blobSize">Equals the node's data length minus 8 (counting the node id). The node id is 3 in all three saves.</u32>
+        <u32 name="formatVersion">3 in all three. The loader treats values above 1 as present and handles 2 specially.</u32>
+        <u64 name="typeTableHash">Differs in every save (changes with the game's type data).</u64>
+        <u32 name="countA">716, 735, 737 in 261, 269, 277.</u32>
+        <u32 name="countB">496, 509, 511.</u32>
+        <u32 name="countC">8073, 8221, 8230.</u32>
+        <array name="types" countField="countA" elementBytes="20">
+          <note>Table A: types.</note>
+          <element>
+            <u64 name="nameHash">Hash of a type name: a primitive (Bool), an enum, a class or struct, or a composite such as array:ForcedStateData or handle:gameMountEventOptions. 590 of 737 resolve to a name in the 2.31 type dump.</u64>
+            <u64 name="elementHash">For arrays and handles the hash of the element or target type (123 of the 134 non-zero ones resolve); 0 otherwise.</u64>
+            <u32 name="sizeAndKind">Size in bytes in the bits from 12 up, a kind code in the low 8 bits.</u32>
+          </element>
+        </array>
+        <array name="classes" countField="countB" elementBytes="8">
+          <note>Table B: classes. Entries are sorted by type index. The counts of all B entries add up to the number of C entries (8,230 in the 277 save); C is cut into consecutive runs, one per B entry in order, and a class's run holds that class's properties (5,562 of the 8,221 properties in the 277 save's runs for classes known to the dump are properties of that class in the dump; the rest are probably inherited from classes whose list is shared, or not saved by the dump's flags; not checked).</note>
+          <element>
+            <u16 name="typeIndex">Index into table A of the class.</u16>
+            <u16 name="unknown" status="open">Differs for every class in all three saves, even where nothing seems to change; a checksum is plausible.</u16>
+            <u16 name="countAndFlag">The high byte is the number of properties; the low byte is 0, 1 or (once) 2.</u16>
+            <u16 name="zero">Always 0.</u16>
+          </element>
+        </array>
+        <array name="properties" countField="countC" elementBytes="12">
+          <note>Table C: properties. The same property name can appear under several classes. Entries are not sorted.</note>
+          <element>
+            <u64 name="nameHash">FNV-1a 64-bit hash of the property name. 8,222 of 8,230 match a property name in the 2.31 dump.</u64>
+            <u32 name="offsetAndType">The low 12 bits are the index of the property's type in table A (verified: Bool = index 705 whose entry is Bool, and the same for Uint32, Int32, TweakDBID, CName and an enum). Bits 12 to 19 are always 0. The bits from 20 up are a byte offset (for example 80, 136 and 232 for Bool properties); what it is an offset in was not confirmed.</u32>
+          </element>
+        </array>
+      </fields>
+      <kindCodes status="partial">
+        <note>Only the kind and size of the primitives and enums were checked against known values; the rest are from how the entries group by name. For classes the size is probably the object's size in memory (for example 120 for ExplosiveDeviceControllerPS). The 29 enum sizes found by trial in the 277 save all agree.</note>
+        <kind code="0x10" meaning="Bool and Uint8" size="1" />
+        <kind code="0x11" meaning="16-bit integers" size="2" />
+        <kind code="0x12" meaning="32-bit integers and Float" size="4" />
+        <kind code="0x13" meaning="64-bit integers" size="8" />
+        <kind code="0x03" meaning="CName" size="8" />
+        <kind code="0x42" meaning="TweakDBID" size="8" />
+        <kind code="0x43" meaning="NodeRef" size="8" />
+        <kind code="0x50" meaning="enum" size="4 (1 for vehicleCameraPerspective)" />
+        <kind code="0x22" meaning="class or struct" />
+        <kind code="0x23" meaning="class or struct (430 of them)" />
+        <kind code="0x24" meaning="class or struct" />
+        <kind code="0x33" meaning="array" />
+        <kind code="0x93" meaning="handle" />
+      </kindCodes>
+    </node>
+    <node name="UIGameControllersState" status="partial" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <array name="controllers" count="u32">
+          <note>kind 1 and 2 objects are 8 and 4 bytes when nothing is queued</note>
+          <element>
+            <u8 name="kind" />
+            <u64 name="id" />
+            <switch on="kind">
+              <case value="1">
+                <bytes name="data" size="8" />
+              </case>
+              <case value="2">
+                <u32 name="queued">number of queued notifications; in the 261 saves 4 queued notifications follow in a notification-specific layout that is not decoded</u32>
+                <undecoded when="queued&gt;0">notification data</undecoded>
+              </case>
+              <case value="3">
+                <array name="widgets" count="u32">
+                  <element>
+                    <string name="name">HUD widget name</string>
+                    <u32 name="state" />
+                  </element>
+                </array>
+              </case>
+            </switch>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="UniqueItemCounter" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <u16 name="counter" />
+      </fields>
+    </node>
+    <node name="VehicleSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <fields>
+        <u8 name="value">1 in every save seen</u8>
+      </fields>
+    </node>
+    <node name="WardrobeSystem" status="verified" instances="23" firstSeen="261" parsedByTools="yes">
+      <fields>
+        <array name="items" count="u32">
+          <note>node is read from save version 224 on</note>
+          <element>
+            <string name="slot">e.g. l1_formal_04_basic_03_</string>
+            <u64 name="tweakDbId">TweakDBID of the item</u64>
+            <u32 name="rngSeed" />
+            <u8 name="a" when="v&gt;96" />
+            <u16 name="b" when="v&gt;189" />
+            <u8 name="c" when="v&gt;220" />
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="WardrobeSystem_ClothingSets" status="verified" instances="23" firstSeen="261" parsedByTools="yes">
+      <fields>
+        <array name="sets" count="varint">
+          <note>node is read from save version 224 on</note>
+          <element>
+            <u32 name="id" />
+            <array name="slots" count="u32">
+              <element>
+                <u32 name="slot" />
+                <u8 name="flag" />
+                <u64 name="tweakDbId">TweakDBID of the item</u64>
+                <u32 name="rngSeed" />
+                <u8 name="a" when="v&gt;96" />
+                <u16 name="b" when="v&gt;189" />
+                <u8 name="c" when="v&gt;220" />
+              </element>
+            </array>
+            <u64 name="name">CName of the set (0 when unnamed)</u64>
+          </element>
+        </array>
+        <u32 name="extra">trailing u32 of unknown meaning, zero in the saves seen</u32>
+      </fields>
+    </node>
+    <node name="WeatherWorldState" status="verified" instances="23" firstSeen="261" parsedByTools="no">
+      <fields>
+        <u32 name="a" />
+        <u32 name="b">-2 in the 277 saves</u32>
+        <u8 name="c" />
+        <u32 name="d" />
+        <u32 name="e" />
+        <u64 name="p1" />
+        <u64 name="p2" />
+        <u64 name="p3" />
+        <u64 name="p4">four 8-byte values that look like f64 coordinates (unconfirmed)</u64>
+        <u32 name="f" />
+        <string name="weatherState">e.g. q307_cutscene_sunny, q304_wake, q001_scav_chase</string>
+        <u32 name="g1" />
+        <u32 name="g2">1.0 in the saves seen</u32>
+        <u32 name="g3" />
+        <u32 name="g4" />
+        <u32 name="h" />
+        <string name="other">e.g. "Runt..." in some saves (second weather name)</string>
+        <u32 name="i1" />
+        <u32 name="i2" />
+        <u32 name="i3" />
+        <u32 name="i4" />
+        <u32 name="j1" />
+        <u32 name="j2" />
+      </fields>
+    </node>
+    <node name="WorkspotInstancesSavedata" status="verified" instances="24" firstSeen="193" parsedByTools="yes">
+      <fields>
+        <array name="workspots" count="u32">
+          <element>
+            <u64 name="id" />
+            <u8 name="flag" />
+            <u64 name="hash" when="v&gt;=191">read from save version 191 on</u64>
+          </element>
+        </array>
+      </fields>
+    </node>
+    <node name="WorldStateSystem" status="verified" instances="24" firstSeen="193" parsedByTools="no">
+      <note>Own data of the node (before the child nodes). Layout from game code function 1409bcdec. The gate v&gt;=10 is from the loader and is not tested locally.</note>
+      <fields>
+        <parallelArrays name="namedFlags" count="varint" when="v&gt;=10">
+          <note>names, then one byte per name</note>
+          <column>
+            <string name="name" />
+          </column>
+          <column bytes="1" />
+        </parallelArrays>
+        <parallelArrays name="hashFlags" count="varint" when="v&gt;=10">
+          <note>u64 hashes, then one byte per hash</note>
+          <column bytes="8" />
+          <column bytes="1" />
+        </parallelArrays>
+        <parallelArrays name="hashLists" count="varint" when="v&gt;=10">
+          <note>u64 hashes, then for each hash a varint count and that many 16-byte values</note>
+          <column bytes="8" />
+          <column>
+            <array name="values" count="varint" elementBytes="16">
+              <note>16 bytes each</note>
+            </array>
+          </column>
+        </parallelArrays>
+        <parallelArrays name="hashLists2" count="varint" when="v&gt;=10">
+          <note>same shape as the previous group</note>
+          <column bytes="8" />
+          <column>
+            <array name="values" count="varint" elementBytes="16">
+              <note>16 bytes each</note>
+            </array>
+          </column>
+        </parallelArrays>
+      </fields>
+    </node>
+  </nodes>
+  <sources>
+    <source name="[WolvenKit/CyberCAT](https://github.com/WolvenKit/CyberCAT)" language="C#" lastChange="Feb 2022 (archived)">Header layout and packed date/time, chunk table handling, node table read and write, the two known chunk table layouts, parsers for a handful of nodes.</source>
+    <source name="[Deweh/CyberCAT-SimpleGUI](https://github.com/Deweh/CyberCAT-SimpleGUI)" language="C#" lastChange="Jul 2025">The GUI. It loads saves through WolvenKit's save reader (below). It still ships the old compiled `CyberCAT.Core.dll`, which we decompiled and found identical in parser set to the archived CyberCAT source.</source>
+    <source name="[PixelRick/CyberpunkSaveEditor](https://github.com/PixelRick/CyberpunkSaveEditor) (CSE)" language="C++" lastChange="May 2024 (patch 2.12)">The most recent readable parser: header, chunk and node handling, version gates per node, tests that re-serialise nodes and compare bytes, and notes on console saves.</source>
+    <source name="[WolvenKit](https://github.com/WolvenKit/WolvenKit) `WolvenKit.RED4/Save" language="C#" lastChange="Jul 2025 (as pinned by SimpleGUI)">The newest readable save parser, and the one SimpleGUI actually uses. Header with the timestamp and game definition path, the node name list, 50 or so node parsers, and the game's `gameGameVersion` enum. **Licence is GPL-3.0, see below.**</source>
+    <source name="[Red Modding wiki: save file](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/files-and-what-they-do/file-formats/save-file-.dat)" language="prose" lastChange="">Container overview. Matches what we found.</source>
+    <source name="[cp2077-nativedb](https://github.com/rayshader/cp2077-nativedb) and [RED4ext.SDK](https://wiki.redmodding.org/cyberpunk-2077-modding/for-mod-creators-theory/core-mods-explained)" language="" lastChange="">Type definitions from the game's reflection data. Not yet used. Candidate source for node payload formats.</source>
+    <licence>CyberCAT, CyberCAT-SimpleGUI and CSE are MIT. WolvenKit is GPL-3.0: facts about the file format are not copyrightable and are recorded in our own words, but WolvenKit's code must not be copied or translated into RelicWriter.</licence>
+  </sources>
+</saveSpec>

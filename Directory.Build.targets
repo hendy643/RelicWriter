@@ -1,0 +1,87 @@
+<Project>
+    <!--
+        Before every build, SyncVersion reads version.json (the only place versions are edited) and writes each project's version into its own project file
+        (<Version>, <AssemblyVersion>, <FileVersion>) and into any *.manifest / *.appxmanifest beside it, only when a value differs. The same values are then
+        used for this build, so the assembly is right even in the build that changed the files. See docs/updates.md.
+    -->
+    <UsingTask TaskName="SyncVersion" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+        <ParameterGroup>
+            <VersionFile ParameterType="System.String" Required="true" />
+            <ProjectFile ParameterType="System.String" Required="true" />
+            <Component ParameterType="System.String" Required="true" />
+            <AppVersion ParameterType="System.String" Output="true" />
+            <ComponentVersion ParameterType="System.String" Output="true" />
+            <ComponentNumber ParameterType="System.String" Output="true" />
+            <DatabaseVersion ParameterType="System.String" Output="true" />
+        </ParameterGroup>
+        <Task>
+            <Using Namespace="System.IO" />
+            <Using Namespace="System.Text" />
+            <Using Namespace="System.Text.RegularExpressions" />
+            <Code Type="Fragment" Language="cs"><![CDATA[
+                var json = File.ReadAllText(VersionFile);
+                string Find(string pattern) { var m = Regex.Match(json, pattern); return m.Success ? m.Groups[1].Value : null; }
+                AppVersion = Find("\"app\"\\s*:\\s*\"([^\"]+)\"");
+                DatabaseVersion = Find("\"database\"\\s*:\\s*(\\d+)") ?? "0";
+                if (AppVersion == null) { Log.LogError("version.json has no \"app\" version."); return false; }
+                ComponentVersion = Find("\"" + Regex.Escape(Component) + "\"\\s*:\\s*\"([^\"]+)\"") ?? AppVersion;
+                var number = Regex.Match(ComponentVersion, @"^\d+\.\d+\.\d+").Value;
+                if (number.Length == 0) { Log.LogError("Version '" + ComponentVersion + "' of " + Component + " in version.json is not x.y.z."); return false; }
+                ComponentNumber = number + ".0";
+
+                // Writes a file only when its text changes, keeping its encoding (BOM or not) and line endings.
+                void Write(string path, string before, string after)
+                {
+                    if (before == after) return;
+                    var bom = File.ReadAllBytes(path).Length >= 3 && File.ReadAllBytes(path)[0] == 0xEF;
+                    File.WriteAllText(path, after, new UTF8Encoding(bom));
+                    Log.LogMessage(MessageImportance.High, "Version " + ComponentVersion + " written to " + Path.GetFileName(path));
+                }
+
+                string SetTag(string xml, string tag, string value)
+                {
+                    var re = new Regex("(<" + tag + ">)[^<]*(</" + tag + ">)");
+                    if (re.IsMatch(xml)) return re.Replace(xml, "${1}" + value + "${2}", 1);
+                    var nl = xml.Contains("\r\n") ? "\r\n" : "\n";
+                    var close = xml.IndexOf("</PropertyGroup>");
+                    if (close < 0) return xml;
+                    var lineStart = xml.LastIndexOf('\n', close) + 1;
+                    return xml.Insert(lineStart, "        <" + tag + ">" + value + "</" + tag + ">" + nl);
+                }
+
+                var project = File.ReadAllText(ProjectFile);
+                var updated = SetTag(SetTag(SetTag(project, "Version", ComponentVersion), "AssemblyVersion", ComponentNumber), "FileVersion", ComponentNumber);
+                Write(ProjectFile, project, updated);
+
+                var dir = Path.GetDirectoryName(ProjectFile);
+                foreach (var manifest in Directory.GetFiles(dir, "*.manifest").Concat(Directory.GetFiles(dir, "*.appxmanifest")))
+                {
+                    var text = File.ReadAllText(manifest);
+                    var next = Regex.Replace(text, "(<assemblyIdentity\\b[^>]*?\\sversion=\")[^\"]*(\")", "${1}" + ComponentNumber + "${2}");
+                    next = Regex.Replace(next, "(<Identity\\b[^>]*?\\sVersion=\")[^\"]*(\")", "${1}" + ComponentNumber + "${2}");
+                    Write(manifest, text, next);
+                }
+            ]]></Code>
+        </Task>
+    </UsingTask>
+
+    <Target Name="SyncVersion" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)version.json')">
+        <SyncVersion VersionFile="$(MSBuildThisFileDirectory)version.json" ProjectFile="$(MSBuildProjectFullPath)" Component="$(MSBuildProjectName)">
+            <Output TaskParameter="AppVersion" PropertyName="AppVersion" />
+            <Output TaskParameter="ComponentVersion" PropertyName="ComponentVersion" />
+            <Output TaskParameter="ComponentNumber" PropertyName="ComponentNumber" />
+            <Output TaskParameter="DatabaseVersion" PropertyName="DatabaseVersion" />
+        </SyncVersion>
+        <PropertyGroup>
+            <Version>$(ComponentVersion)</Version>
+            <AssemblyVersion>$(ComponentNumber)</AssemblyVersion>
+            <FileVersion>$(ComponentNumber)</FileVersion>
+            <InformationalVersion>$(ComponentVersion)</InformationalVersion>
+        </PropertyGroup>
+        <ItemGroup>
+            <!-- The application version and the save version the database was built for, readable at run time (AppVersion). -->
+            <AssemblyMetadata Include="AppVersion" Value="$(AppVersion)" />
+            <AssemblyMetadata Include="DatabaseVersion" Value="$(DatabaseVersion)" />
+        </ItemGroup>
+    </Target>
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <Version>0.1.0</Version>
+        <AssemblyVersion>0.1.0.0</AssemblyVersion>
+        <FileVersion>0.1.0.0</FileVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="Seeds\*" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\RelicWriter.Common\RelicWriter.Common.csproj" />
+        <ProjectReference Include="..\RelicWriter.GameAssets\RelicWriter.GameAssets.csproj" />
+    </ItemGroup>
+</Project>
