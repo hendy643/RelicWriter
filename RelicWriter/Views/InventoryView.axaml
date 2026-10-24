@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.InventoryView">
     <Grid RowDefinitions="Auto,*" RowSpacing="16" Margin="0,0,0,16">
 
         <!-- Eddies, sub-inventory and search, like the top of the in-game inventory -->
-        <Border Classes="panel">
+        <controls:NotchedBorder Classes="panel">
             <Grid ColumnDefinitions="260,*,240" ColumnSpacing="20">
                 <StackPanel Spacing="4">
                     <TextBlock Classes="h2" Text="EDDIES" />
@@ -19,10 +20,10 @@
                     <TextBox Text="{Binding Search}" MaxLength="32" PlaceholderText="Item name" />
                 </StackPanel>
             </Grid>
-        </Border>
+        </controls:NotchedBorder>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,320" ColumnSpacing="16">
-            <Border Classes="panel">
+            <controls:NotchedBorder Classes="panel">
                 <ListBox Classes="tiles" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}">
                     <ListBox.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -39,10 +40,10 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-            </Border>
+            </controls:NotchedBorder>
 
             <!-- Item details -->
-            <Border Grid.Column="1" Classes="panel">
+            <controls:NotchedBorder Grid.Column="1" Classes="panel">
                 <StackPanel Spacing="10" DataContext="{Binding Selected}" IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <TextBlock Classes="h2" Text="ITEM" />
                     <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap" />
@@ -54,7 +55,7 @@
                     <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
                                Text="Only stack quantities can be edited. Names are read from your game files (or a bundled list if the game was not found); items neither knows, for example from mods, show as Unknown item." />
                 </StackPanel>
-            </Border>
+            </controls:NotchedBorder>
         </Grid>
     </Grid>
 </UserControl>

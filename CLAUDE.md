@@ -38,4 +38,4 @@ Avalonia 12 / .NET 10 desktop app (Windows and Linux only; Android, iOS and Brow
 
 ## License
 
-GPL-3.0-only (`LICENSE`; SPDX `GPL-3.0-only`). It covers the code written for this project. It does not cover the game text in `Database/*.sql` and `gamedata.db`, which belongs to CD PROJEKT RED. Don't copy code from WolvenKit (GPL-3.0, its own terms) or other projects without checking their licenses.
+GPL-3.0-only (`LICENSE`; SPDX `GPL-3.0-only`). It covers the code written for this project. It does not cover the game text in `Database/*.sql` and `gamedata.db`, which belongs to CD PROJEKT RED. The bundled font Rajdhani (`RelicWriter/Assets/Fonts`) is under the SIL Open Font License (`OFL.txt` beside it). Don't copy code from WolvenKit (GPL-3.0, its own terms) or other projects without checking their licenses.

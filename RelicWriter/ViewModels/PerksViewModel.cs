@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -35,7 +36,43 @@ public partial class PerkViewModel : ViewModelBase
 
     public string CostText => Info.CostPerLevel == 1 ? "" : $"{Info.CostPerLevel} points per level";
 
-    [ObservableProperty] public partial double Level { get; set; }
+    // Where the perk is drawn in the tree (set by PerkLayout), and how big.
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Size { get; set; }
+    public bool IsHub { get; set; }
+    public bool LabelAbove { get; set; }
+    public bool LabelBelow => !LabelAbove;
+    public double LabelOffset => Size + 3;
+    public double LabelOffsetUp => -(Size + 3);
+    public bool IsRelic => Info.IsRelic;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBought), nameof(IsMaxed), nameof(LevelText))]
+    public partial double Level { get; set; }
+
+    public bool IsBought => Level > 0;
+    public bool IsMaxed => Level >= MaxLevel;
+    public string LevelText => MaxLevel > 1 ? $"{Level:0}/{MaxLevel}" : "";
+
+    /// <summary>What the game wants before this perk can be bought, for the detail card.</summary>
+    public string RequirementText
+    {
+        get
+        {
+            var needs = all().Where(p => Info.RequiredPerks.Contains(p.Info.Id)).Select(p => p.Title).ToList();
+            var parts = new List<string>();
+            if (Info.AttributePoints > 0) parts.Add($"{Perks.AttributeStat(Info.Tree)} at {Info.AttributePoints}".ToUpperInvariant());
+            if (needs.Count > 0) parts.Add("Needs " + string.Join(", ", needs));
+            return parts.Count == 0 ? "No requirements" : string.Join("  ·  ", parts);
+        }
+    }
+
+    public string CardCost => $"{Info.CostPerLevel * MaxLevel} {(Info.IsRelic ? "relic" : "perk")} point{(Info.CostPerLevel * MaxLevel == 1 ? "" : "s")} in all";
+
+    public void Raise() => Level = Math.Min(MaxLevel, Math.Round(Level) + 1);
+
+    public void Lower() => Level = Math.Max(0, Math.Round(Level) - 1);
 
     partial void OnLevelChanged(double oldValue, double newValue)
     {
@@ -58,7 +95,29 @@ public partial class PerkViewModel : ViewModelBase
     }
 }
 
-public sealed record PerkTreeViewModel(string Title, IReadOnlyList<PerkViewModel> Perks);
+/// <summary>A line from a perk to the perk that needs it, lit while the perk it leaves is bought.</summary>
+public sealed class PerkLink : ViewModelBase
+{
+    readonly PerkViewModel from;
+
+    public PerkLink(PerkViewModel from, PerkViewModel to)
+    {
+        this.from = from;
+        // Along the rail out of the first perk, then across to the second.
+        Points = [new Point(from.X + from.Size / 2, from.Y + from.Size / 2), new Point(from.X + from.Size / 2, to.Y + to.Size / 2), new Point(to.X + to.Size / 2, to.Y + to.Size / 2)];
+        from.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(PerkViewModel.IsBought)) OnPropertyChanged(nameof(IsOn)); };
+    }
+
+    public IReadOnlyList<Point> Points { get; }
+    public bool IsOn => from.IsBought;
+    public bool IsRelic => from.IsRelic;
+}
+
+public sealed record PerkTreeViewModel(string Title, IReadOnlyList<PerkViewModel> Perks, IReadOnlyList<PerkLink> Links)
+{
+    public double Width => PerkLayout.Width;
+    public double Height => PerkLayout.Height;
+}
 
 /// <summary>The perks tab: every perk of the attribute trees and the Relic tree, with the unspent points kept in step.</summary>
 public partial class PerksViewModel : ViewModelBase
@@ -73,8 +132,13 @@ public partial class PerksViewModel : ViewModelBase
         this.character = character;
         this.changed = changed;
         Trees = new ObservableCollection<PerkTreeViewModel>(Perks.TreeData.Keys.Where(dev.HasTree).Select(tree =>
-            new PerkTreeViewModel(tree == Perks.RelicTree ? "RELIC" : tree.ToUpperInvariant(),
-                Perks.All.Where(p => p.Tree == tree).Select(p => new PerkViewModel(dev, p, Spend, () => Trees.SelectMany(t => t.Perks), RaiseAttribute, CanBuy)).ToList())));
+        {
+            var perks = Perks.All.Where(p => p.Tree == tree).Select(p => new PerkViewModel(dev, p, Spend, () => Trees.SelectMany(t => t.Perks), RaiseAttribute, CanBuy)).ToList();
+            PerkLayout.Place(perks);
+            var byId = perks.ToDictionary(p => p.Info.Id);
+            var links = perks.SelectMany(to => to.Info.RequiredPerks.Where(byId.ContainsKey).Select(id => new PerkLink(byId[id], to))).ToList();
+            return new PerkTreeViewModel(tree == Perks.RelicTree ? "RELIC" : tree.ToUpperInvariant(), perks, links);
+        }));
 
         // Lowering an attribute takes back the perks its new value no longer unlocks (the points come back through Spend).
         foreach (var attribute in character.Attributes)
@@ -87,6 +151,9 @@ public partial class PerksViewModel : ViewModelBase
     }
 
     public ObservableCollection<PerkTreeViewModel> Trees { get; }
+
+    /// <summary>The perk the pointer is over, shown on the detail card.</summary>
+    [ObservableProperty] public partial PerkViewModel? SelectedPerk { get; set; }
 
     public bool CanEditPerkPoints => character.CanEditPerkPoints;
     public bool CanEditRelicPoints => character.CanEditRelicPoints && dev.HasRelic;

@@ -1,11 +1,22 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.PerksView">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid ColumnDefinitions="300,*" ColumnSpacing="16" Margin="0,0,0,24">
 
+            <StackPanel Grid.Column="0" Spacing="16" VerticalAlignment="Top">
+            <!-- The perk under the pointer; click a perk to buy a level, right-click to sell one -->
+            <controls:NotchedBorder Classes="card" DataContext="{Binding SelectedPerk}" IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="h2" Text="{Binding Title}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding LevelText}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource CpCyan}" IsVisible="{Binding LevelText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <TextBlock Classes="dim" Text="{Binding CardCost}" />
+                    <TextBlock Classes="dim" Text="{Binding RequirementText}" TextWrapping="Wrap" />
+                </StackPanel>
+            </controls:NotchedBorder>
             <!-- Points: buying a level takes its cost from here -->
-            <Border Grid.Column="0" Classes="panel" VerticalAlignment="Top">
+            <controls:NotchedBorder Classes="panel" VerticalAlignment="Top">
                 <StackPanel Spacing="10">
                     <TextBlock Classes="h2" Text="POINTS" />
                     <TextBlock Classes="dim" TextWrapping="Wrap" Text="Each perk level costs one point, except the three Relic milestone perks, which cost three. Buying or selling a level changes the unspent points to match, and a perk can only be bought with enough points, once the perks it needs are maxed and its attribute is high enough (buying raises those for you; lowering an attribute takes perks back)." />
@@ -15,38 +26,67 @@
                     <Button Classes="primary" Content="POINTS FOR ALL RELIC PERKS" Command="{Binding PointsForAllRelicPerksCommand}" />
                     <TextBlock Classes="dim" TextWrapping="Wrap" FontSize="12" Text="Official max is what a normal game with Phantom Liberty can earn: 59 from levelling, 10 from skills and 13 from Perk Shards. Perks must be bought in the game's order; an edited tree has not been loaded in the game yet." />
                 </StackPanel>
-            </Border>
+            </controls:NotchedBorder>
+            </StackPanel>
 
-            <ItemsControl Grid.Column="1" ItemsSource="{Binding Trees}">
-                <ItemsControl.ItemTemplate>
+            <!-- One tab per tree; each draws its perks as the game does, hubs and the perks around them, joined by the lines of who needs whom -->
+            <TabControl Grid.Column="1" ItemsSource="{Binding Trees}" Padding="0,8,0,0">
+                <TabControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Classes="panel" Margin="0,0,0,16">
-                            <StackPanel Spacing="8">
-                                <TextBlock Classes="h2" Text="{Binding Title}" />
-                                <ItemsControl ItemsSource="{Binding Perks}">
+                        <TextBlock Text="{Binding Title}" />
+                    </DataTemplate>
+                </TabControl.ItemTemplate>
+                <TabControl.ContentTemplate>
+                    <DataTemplate>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <Grid Width="{Binding Width}" Height="{Binding Height}" HorizontalAlignment="Left">
+                                <ItemsControl ItemsSource="{Binding Links}">
                                     <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <UniformGrid Columns="2" />
-                                        </ItemsPanelTemplate>
+                                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid ColumnDefinitions="*,140,20" Margin="0,0,12,6">
-                                                <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" />
-                                                    <TextBlock Classes="dim" FontSize="11" Text="{Binding CostText}" />
-                                                </StackPanel>
-                                                <Slider Grid.Column="1" Value="{Binding Level}" Minimum="0" Maximum="{Binding MaxLevel}" TickFrequency="1" IsSnapToTickEnabled="True" />
-                                                <TextBlock Grid.Column="2" Text="{Binding Level}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                            </Grid>
+                                            <Polyline Classes="link" Classes.on="{Binding IsOn}" Classes.relic="{Binding IsRelic}" Points="{Binding Points}" />
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </StackPanel>
-                        </Border>
+                                <ItemsControl ItemsSource="{Binding Perks}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ContentPresenter">
+                                            <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Panel Width="{Binding Size}" Height="{Binding Size}">
+                                                <Panel Classes="node" Width="{Binding Size}" Height="{Binding Size}" Background="Transparent" Cursor="Hand"
+                                                       PointerPressed="NodePressed" PointerEntered="NodeEntered">
+                                                    <Polygon Classes="perk" Classes.bought="{Binding IsBought}" Classes.maxed="{Binding IsMaxed}" Classes.relic="{Binding IsRelic}"
+                                                             Points="30,0 70,0 100,30 100,70 70,100 30,100 0,70 0,30" Stretch="Fill" />
+                                                    <TextBlock Text="{Binding LevelText}" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+                                                </Panel>
+                                                <!-- The name, wider than the node on purpose, above or below it over the empty space around -->
+                                                <TextBlock Classes="perklabel" Classes.bought="{Binding IsBought}" Text="{Binding Title}" Width="108" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                                                           IsVisible="{Binding LabelAbove}" IsHitTestVisible="False">
+                                                    <TextBlock.RenderTransform><TranslateTransform Y="{Binding LabelOffsetUp}" /></TextBlock.RenderTransform>
+                                                </TextBlock>
+                                                <TextBlock Classes="perklabel" Classes.bought="{Binding IsBought}" Text="{Binding Title}" Width="108" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                           IsVisible="{Binding LabelBelow}" IsHitTestVisible="False">
+                                                    <TextBlock.RenderTransform><TranslateTransform Y="{Binding LabelOffset}" /></TextBlock.RenderTransform>
+                                                </TextBlock>
+                                            </Panel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </ScrollViewer>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </TabControl.ContentTemplate>
+            </TabControl>
         </Grid>
     </ScrollViewer>
 </UserControl>

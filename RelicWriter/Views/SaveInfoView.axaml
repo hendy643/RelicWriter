@@ -1,7 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.SaveInfoView">
-    <Border Classes="panel" VerticalAlignment="Top" Margin="0,0,0,16">
+    <controls:NotchedBorder Classes="panel" VerticalAlignment="Top" Margin="0,0,0,16">
         <ItemsControl ItemsSource="{Binding Rows}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -12,5 +13,5 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-    </Border>
+    </controls:NotchedBorder>
 </UserControl>

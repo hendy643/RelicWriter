@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.MainView">
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Top bar -->
-        <Border Grid.Row="0" Classes="panel" Padding="24,14" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Classes="panel" Background="Transparent" Padding="24,10" BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                     <TextBlock Classes="h1" Text="RELICWRITER" VerticalAlignment="Center" />
@@ -70,7 +71,7 @@
         </TabControl>
 
         <!-- Status bar -->
-        <Border Grid.Row="2" Classes="panel" Padding="24,8" BorderThickness="0,1,0,0">
+        <Border Grid.Row="2" Classes="panel" Background="Transparent" Padding="24,8" BorderThickness="0,1,0,0">
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Text="{Binding Status}" Foreground="{StaticResource CpDim}" IsVisible="{Binding !StatusIsError}" TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{Binding Status}" Foreground="{StaticResource CpRed}" IsVisible="{Binding StatusIsError}" TextTrimming="CharacterEllipsis" />
