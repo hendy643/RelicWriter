@@ -1,14 +1,14 @@
 {
-  "app": "0.1.0",
+  "app": "1.0.0",
   "database": 277,
   "components": {
-    "RelicWriter.Desktop": "0.1.0",
-    "RelicWriter": "0.1.0",
-    "RelicWriter.Common": "0.1.0",
-    "RelicWriter.GameAssets": "0.1.0",
-    "RelicWriter.Model3D": "0.1.0",
-    "RelicWriter.Extractor": "0.1.0",
-    "RelicWriter.Generator": "0.1.0",
-    "RelicWriter.Tests": "0.1.0"
+    "RelicWriter.Desktop": "1.0.0",
+    "RelicWriter": "1.0.0",
+    "RelicWriter.Common": "1.0.0",
+    "RelicWriter.GameAssets": "1.0.0",
+    "RelicWriter.Model3D": "1.0.0",
+    "RelicWriter.Extractor": "1.0.0",
+    "RelicWriter.Generator": "1.0.0",
+    "RelicWriter.Tests": "1.0.0"
   }
 }
