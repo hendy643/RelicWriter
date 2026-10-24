@@ -5,9 +5,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
-        <Version>0.1.0</Version>
-        <AssemblyVersion>0.1.0.0</AssemblyVersion>
-        <FileVersion>0.1.0.0</FileVersion>
+        <Version>1.0.0</Version>
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+        <FileVersion>1.0.0.0</FileVersion>
     </PropertyGroup>
     <ItemGroup>
         <!-- The game database: SQL scripts made by RelicWriter.Extractor gamedata, run into an in-memory SQLite database at start (see docs/game-database.md). -->
