@@ -5,5 +5,5 @@ Comment=Save game editor for Cyberpunk 2077
 Exec=relicwriter %f
 Icon=io.github.hendy643.RelicWriter
 Terminal=false
-Categories=Utility;Game;
+Categories=Game;
 Keywords=Cyberpunk;save;editor;
