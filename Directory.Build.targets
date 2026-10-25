@@ -2,7 +2,7 @@
     <!--
         Before every build, SyncVersion reads version.json (the only place versions are edited) and writes each project's version into its own project file
         (<Version>, <AssemblyVersion>, <FileVersion>) and into any *.manifest / *.appxmanifest beside it, only when a value differs. The same values are then
-        used for this build, so the assembly is right even in the build that changed the files. See docs/updates.md.
+        used for this build, so the assembly is right even in the build that changed the files. See docs/versions.md.
     -->
     <UsingTask TaskName="SyncVersion" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
         <ParameterGroup>
@@ -65,7 +65,7 @@
         </Task>
     </UsingTask>
 
-    <Target Name="SyncVersion" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)version.json') And '$(MSBuildProjectExtension)' != '.wixproj'">
+    <Target Name="SyncVersion" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)version.json')">
         <SyncVersion VersionFile="$(MSBuildThisFileDirectory)version.json" ProjectFile="$(MSBuildProjectFullPath)" Component="$(MSBuildProjectName)">
             <Output TaskParameter="AppVersion" PropertyName="AppVersion" />
             <Output TaskParameter="ComponentVersion" PropertyName="ComponentVersion" />
@@ -78,7 +78,15 @@
             <FileVersion>$(ComponentNumber)</FileVersion>
             <InformationalVersion>$(ComponentVersion)</InformationalVersion>
         </PropertyGroup>
+        <!-- Builds that are not a formal release (RELICWRITER_RELEASE=true is set by the release workflow) carry the short hash of the current commit, shown after the version. -->
+        <Exec Condition="'$(RELICWRITER_RELEASE)' != 'true'" Command="git rev-parse --short HEAD" WorkingDirectory="$(MSBuildThisFileDirectory)" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+            <Output TaskParameter="ConsoleOutput" PropertyName="GitShortHash" />
+        </Exec>
+        <PropertyGroup>
+            <GitShortHash Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(GitShortHash)', '^[0-9a-f]{7,40}$'))"></GitShortHash>
+        </PropertyGroup>
         <ItemGroup>
+            <AssemblyMetadata Include="GitHash" Value="$(GitShortHash)" />
             <!-- The application version and the save version the database was built for, readable at run time (AppVersion). -->
             <AssemblyMetadata Include="AppVersion" Value="$(AppVersion)" />
             <AssemblyMetadata Include="DatabaseVersion" Value="$(DatabaseVersion)" />

@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RelicWriter.Controls"
+             x:Class="RelicWriter.Views.AboutView">
+    <ScrollViewer Margin="0,0,0,16">
+        <StackPanel Spacing="16">
+            <controls:NotchedBorder Classes="panel">
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="h2" Text="RELICWRITER" />
+                    <TextBlock Text="{Binding Version, StringFormat='Version {0}'}" FontSize="22" FontWeight="Bold" />
+                    <TextBlock Classes="dim" Text="{Binding BuildNote}" />
+                    <TextBlock Classes="dim" Text="{Binding Repository}" />
+                </StackPanel>
+            </controls:NotchedBorder>
+
+            <controls:NotchedBorder Classes="panel">
+                <StackPanel Spacing="10">
+                    <TextBlock Classes="h2" Text="CREDITS" />
+                    <ItemsControl ItemsSource="{Binding Credits}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding Title}" FontWeight="Bold" />
+                                    <TextBlock Classes="dim" Text="{Binding Text}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </controls:NotchedBorder>
+
+            <controls:NotchedBorder Classes="panel">
+                <StackPanel Spacing="10">
+                    <TextBlock Classes="h2" Text="WHAT'S NEW" />
+                    <ItemsControl ItemsSource="{Binding Changelog}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,12" Spacing="2">
+                                    <TextBlock Text="{Binding Heading}" FontWeight="Bold" Foreground="{StaticResource CpYellow}" />
+                                    <ItemsControl ItemsSource="{Binding Lines}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid ColumnDefinitions="16,*">
+                                                    <TextBlock Text="•" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </controls:NotchedBorder>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

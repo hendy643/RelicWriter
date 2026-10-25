@@ -1,13 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Net.Http;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RelicWriter.Common.Container;
 using RelicWriter.Common.GameData;
 using RelicWriter.Common.Model;
-using RelicWriter.Common.Updates;
+using RelicWriter.Common.AppInfo;
 using RelicWriter.GameAssets;
 
 namespace RelicWriter.ViewModels;
@@ -68,6 +67,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] public partial SaveInfoViewModel? Info { get; set; }
     [ObservableProperty] public partial NodesViewModel? Nodes { get; set; }
 
+    public AboutViewModel About { get; } = new();
+
     public string WindowTitle => (FilePath is null ? "RelicWriter" : $"RelicWriter - {FilePath}") + (IsDirty ? " *" : "");
 
     partial void OnFilePathChanged(string? value) => OnPropertyChanged(nameof(WindowTitle));
@@ -78,50 +79,7 @@ public partial class MainViewModel : ViewModelBase
 
     public bool HasGameIcons => GameIcons.Current is not null;
 
-    public string VersionText => "v" + AppVersion.Text;
-
-    /// <summary>Closes the app; set by the window. Used to let an installer replace the app's files.</summary>
-    public Action? Exit { get; set; }
-
-    // Set to skip the update check, for example when running from a build folder.
-    const string NoUpdateVariable = "RELICWRITER_NO_UPDATE";
-    static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(15), DownloadTimeout = TimeSpan.FromMinutes(10);
-
-    /// <summary>
-    /// In the background, looks for a newer release and downloads its installer. With no save open it then runs the installer and closes the app;
-    /// otherwise it says the update is ready, and the next start installs it, so unsaved edits are never lost. Any failure (offline, no release,
-    /// damaged download) is ignored: the app carries on as it is.
-    /// </summary>
-    public async void StartUpdateCheck()
-    {
-        if (Debugger.IsAttached || Environment.GetEnvironmentVariable(NoUpdateVariable) is not null) return;
-        try
-        {
-            using var http = new HttpClient();
-            var checker = new UpdateChecker(http);
-            using var check = new CancellationTokenSource(CheckTimeout);
-            if (await checker.CheckAsync(AppVersion.Current, check.Token) is not { } update) return;
-            if (update.Installer is not { } installer)
-            {
-                Dispatcher.UIThread.Post(() => SetStatus($"RelicWriter {update.Version} is available: {update.PageUrl}", false));
-                return;
-            }
-            Dispatcher.UIThread.Post(() => SetStatus($"Downloading RelicWriter {update.Version}…", false));
-            using var download = new CancellationTokenSource(DownloadTimeout);
-            var file = await checker.DownloadAsync(installer, download.Token);
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (IsLoaded) { SetStatus($"RelicWriter {update.Version} is ready. It installs the next time the app starts.", false); return; }
-                UpdateChecker.Launch(file);
-                Exit?.Invoke();
-            });
-        }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException or UnauthorizedAccessException or InvalidDataException
-                                      or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
-        {
-            // The update is optional; try again at the next start.
-        }
-    }
+    public string VersionText => "v" + AppVersion.DisplayText;
 
     const int MaxRecentSaves = 12;
 
@@ -145,7 +103,7 @@ public partial class MainViewModel : ViewModelBase
         if (Dialogs is null || await Dialogs.PickFolderAsync() is not { } dir) return;
         if (!GameLocator.IsGameFolder(dir) || GameIcons.Open(dir) is not { } icons)
         {
-            SetStatus("That folder is not a readable Cyberpunk 2077 install (vehicle pictures can only be read on Windows).", true);
+            SetStatus("That folder is not a readable Cyberpunk 2077 install.", true);
             return;
         }
         GameLocator.Remember(dir);
@@ -184,13 +142,16 @@ public partial class MainViewModel : ViewModelBase
             inventory = inv;
             garage = gar;
             FilePath = path;
-            Character = dev is null ? null : new CharacterViewModel(dev, MarkDirty);
-            Perks = dev is null || Character is null ? null : new PerksViewModel(dev, Character, MarkDirty);
+            var expansion = dev is not null && GameEdition.LooksLikePhantomLiberty(dev);
+            var edition = new EditionViewModel(new GameEdition(loaded.Header.GameVersion, expansion));
+            Character = dev is null ? null : new CharacterViewModel(dev, MarkDirty, edition);
+            RebuildPerks(dev, edition.Edition);
+            edition.PropertyChanged += (_, _) => RebuildPerks(dev, edition.Edition);
             Appearance = app is null ? null : new AppearanceViewModel(app, MarkDirty);
             Preview = Appearance is null ? null : new PreviewViewModel(Appearance);
-            Inventory = inv is null ? null : new InventoryViewModel(inv, MarkDirty);
+            Inventory = inv is null ? null : new InventoryViewModel(inv, MarkDirty, edition);
             Vehicles = new VehiclesViewModel(gar, MarkDirty);
-            Info = new SaveInfoViewModel(loaded, path, bytes.Length);
+            Info = new SaveInfoViewModel(loaded, path, bytes.Length, edition, expansion, MarkDirty);
             Nodes = new NodesViewModel(loaded);
             IsLoaded = true;
             IsDirty = false;
@@ -202,6 +163,10 @@ public partial class MainViewModel : ViewModelBase
             SetStatus($"Could not open {path}: {e.Message}", true);
         }
     }
+
+    // The perk trees are the 2.x ones, so older saves have no Perks tab; the Relic tree is in only with the expansion.
+    void RebuildPerks(PlayerDevelopment? dev, GameEdition edition) =>
+        Perks = dev is null || Character is null || !edition.HasPerkTrees ? null : new PerksViewModel(dev, Character, MarkDirty, edition);
 
     void Write(string path)
     {
