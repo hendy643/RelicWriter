@@ -30,6 +30,21 @@ public class GameLocatorTests
     }
 
     [Fact]
+    public void LutrisGivesThePrefixOfCyberpunkOnly()
+    {
+        Assert.Equal("/home/v/Games/cp-prefix", GameLocator.LutrisPrefix("game_slug: cyberpunk-2077\ngame:\n  prefix: /home/v/Games/cp-prefix\n"));
+        Assert.Null(GameLocator.LutrisPrefix("game_slug: witcher-3\ngame:\n  prefix: /x\n"));
+    }
+
+    [Fact]
+    public void HeroicGamesConfigGivesThePrefixAndItsPfx()
+    {
+        const string json = "{\"1423049311\":{\"winePrefix\":\"/home/v/Games/Heroic/Prefixes/cp\",\"other\":1},\"version\":\"v0\"}";
+        Assert.Equal(["/home/v/Games/Heroic/Prefixes/cp", "/home/v/Games/Heroic/Prefixes/cp/pfx"], GameLocator.HeroicPrefixes(json).Select(p => p.Replace('\\', '/')));
+        Assert.Empty(GameLocator.HeroicPrefixes(""));
+    }
+
+    [Fact]
     public void LutrisIgnoresOtherGames() => Assert.Empty(GameLocator.LutrisPaths("game_slug: witcher-3\ngame:\n  exe: /x/witcher3.exe\n"));
 
     [Fact]

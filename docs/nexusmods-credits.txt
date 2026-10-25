@@ -1,0 +1,24 @@
+Lead developer: hendy643 - leading a team of one human and two AIs.
+
+CD PROJEKT RED - Cyberpunk 2077 and Phantom Liberty. The record names, item, vehicle and perk names, perk costs and requirements come from the game's own data and belong to CD PROJEKT RED. Vehicle pictures are read from your own game install. Cyberpunk 2077 and Phantom Liberty are trademarks of CD PROJEKT S.A. This is an unofficial fan project, not affiliated with or endorsed by CD PROJEKT RED.
+
+Claude (Claude Code, by Anthropic) - wrote most of the code, tests and documentation, under my direction.
+
+GitHub Copilot - fixed the Linux build script in CI.
+
+Save format research:
+CyberCAT by Mathies Foels (MIT) - https://github.com/WolvenKit/CyberCAT
+CyberpunkSaveEditor by PixelRick (MIT) - https://github.com/PixelRick/CyberpunkSaveEditor
+CyberCAT-SimpleGUI by DeweySalt (MIT) - https://github.com/Deweh/CyberCAT-SimpleGUI
+CP2077SaveEditor (MIT)
+WolvenKit - read for reference only, no code used - https://github.com/WolvenKit/WolvenKit
+Red Modding wiki - https://wiki.redmodding.org/
+Ghidra
+
+Libraries: Avalonia, CommunityToolkit.Mvvm, K4os.Compression.LZ4, BCnEncoder.Net, Entity Framework Core with SQLite, xUnit.net.
+
+Fonts: Rajdhani (Indian Type Foundry) and Inter (Rasmus Andersson), both under the SIL Open Font License.
+
+Packaging: Flatpak and GitHub Actions.
+
+Full list with licenses: https://github.com/hendy643/RelicWriter/blob/master/docs/credits.md

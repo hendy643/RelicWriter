@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:RelicWriter.Controls"
              x:Class="RelicWriter.Views.SaveInfoView">
-    <controls:NotchedBorder Classes="panel" VerticalAlignment="Top" Margin="0,0,0,16">
+    <StackPanel VerticalAlignment="Top" Spacing="16" Margin="0,0,0,16">
+    <controls:NotchedBorder Classes="panel" >
         <ItemsControl ItemsSource="{Binding Rows}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -14,4 +15,28 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
     </controls:NotchedBorder>
+
+        <controls:NotchedBorder Classes="panel">
+            <StackPanel Spacing="10">
+                <TextBlock Classes="h2" Text="WHAT THE EDITOR ALLOWS" />
+                <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
+                           Text="Level and skill limits, the skills shown, the Perks tab and the Relic tree follow the game patch below, as the game's release notes describe them." />
+                <CheckBox Content="PHANTOM LIBERTY (level 60, Relic skill and Relic perks)" IsChecked="{Binding PhantomLiberty}" IsEnabled="{Binding CanChangeExpansion}"
+                          ToolTip.Tip="The save does not record the expansion, so this only sets what the editor allows. It is on by itself when the save shows signs of it. Needs game version 2.0 or later." />
+                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasChoices}">
+                    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding SelectedPatch}" PlaceholderText="Move to a later game version…" MinWidth="260">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Classes="primary" Content="APPLY" Command="{Binding ApplyPatchCommand}" />
+                </StackPanel>
+                <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap" Text="{Binding UpgradeNote}" />
+                <TextBlock Classes="dim" FontSize="12" TextWrapping="Wrap"
+                           Text="Only later patches that write the same save version are offered: they change just the game version in the file header." />
+            </StackPanel>
+        </controls:NotchedBorder>
+    </StackPanel>
 </UserControl>

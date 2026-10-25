@@ -10,10 +10,9 @@ public sealed class GameResources(GameFiles files)
 
     public GameFiles Files { get; } = files;
 
-    /// <summary>Opens a game directory's archives, or null when the Oodle library isn't there (Windows only for now).</summary>
+    /// <summary>Opens a game directory's archives, or null when the folder has none.</summary>
     public static GameResources? Open(string gameDir)
     {
-        if (!Oodle.TryLoad(gameDir)) return null;
         var root = Path.Combine(gameDir, "archive", "pc");
         if (!Directory.Exists(root)) return null;
         // ep1 (Phantom Liberty) first so its files replace the base game's.

@@ -113,10 +113,9 @@ public sealed class PerkLink : ViewModelBase
     public bool IsRelic => from.IsRelic;
 }
 
-public sealed record PerkTreeViewModel(string Title, IReadOnlyList<PerkViewModel> Perks, IReadOnlyList<PerkLink> Links)
+public sealed record PerkTreeViewModel(string Title, IReadOnlyList<PerkViewModel> Perks, IReadOnlyList<PerkLink> Links, double Height)
 {
     public double Width => PerkLayout.Width;
-    public double Height => PerkLayout.Height;
 }
 
 /// <summary>The perks tab: every perk of the attribute trees and the Relic tree, with the unspent points kept in step.</summary>
@@ -126,18 +125,18 @@ public partial class PerksViewModel : ViewModelBase
     readonly CharacterViewModel character;
     readonly Action changed;
 
-    public PerksViewModel(PlayerDevelopment dev, CharacterViewModel character, Action changed)
+    public PerksViewModel(PlayerDevelopment dev, CharacterViewModel character, Action changed, GameEdition edition)
     {
         this.dev = dev;
         this.character = character;
         this.changed = changed;
-        Trees = new ObservableCollection<PerkTreeViewModel>(Perks.TreeData.Keys.Where(dev.HasTree).Select(tree =>
+        Trees = new ObservableCollection<PerkTreeViewModel>(Perks.TreeData.Keys.Where(dev.HasTree).Where(tree => tree != Perks.RelicTree || edition.HasPhantomLiberty).Select(tree =>
         {
             var perks = Perks.All.Where(p => p.Tree == tree).Select(p => new PerkViewModel(dev, p, Spend, () => Trees.SelectMany(t => t.Perks), RaiseAttribute, CanBuy)).ToList();
-            PerkLayout.Place(perks);
+            var height = PerkLayout.Place(perks);
             var byId = perks.ToDictionary(p => p.Info.Id);
             var links = perks.SelectMany(to => to.Info.RequiredPerks.Where(byId.ContainsKey).Select(id => new PerkLink(byId[id], to))).ToList();
-            return new PerkTreeViewModel(tree == Perks.RelicTree ? "RELIC" : tree.ToUpperInvariant(), perks, links);
+            return new PerkTreeViewModel(tree == Perks.RelicTree ? "RELIC" : tree.ToUpperInvariant(), perks, links, height);
         }));
 
         // Lowering an attribute takes back the perks its new value no longer unlocks (the points come back through Spend).
@@ -156,7 +155,7 @@ public partial class PerksViewModel : ViewModelBase
     [ObservableProperty] public partial PerkViewModel? SelectedPerk { get; set; }
 
     public bool CanEditPerkPoints => character.CanEditPerkPoints;
-    public bool CanEditRelicPoints => character.CanEditRelicPoints && dev.HasRelic;
+    public bool CanEditRelicPoints => character.CanEditRelicPoints && dev.HasRelic && Trees.Any(t => t.Perks.Any(p => p.IsRelic));
 
     public string OfficialMaxText => $"OFFICIAL MAX ({Perks.OfficialMaxPerkPoints})";
 
@@ -193,7 +192,7 @@ public partial class PerksViewModel : ViewModelBase
     }
 
     /// <summary>Points still needed to buy every level of the regular perks, or of the Relic perks.</summary>
-    int Remaining(bool relic) => Perks.All.Where(p => p.IsRelic == relic && dev.HasTree(p.Tree)).Sum(p => (p.MaxLevel - dev.PerkLevel(p)) * p.CostPerLevel);
+    int Remaining(bool relic) => Trees.SelectMany(t => t.Perks).Select(p => p.Info).Where(p => p.IsRelic == relic).Sum(p => (p.MaxLevel - dev.PerkLevel(p)) * p.CostPerLevel);
 
     // Each level bought takes its cost from the unspent points, as in the game.
     [RelayCommand]

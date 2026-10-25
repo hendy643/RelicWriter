@@ -18,8 +18,6 @@ public partial class MainWindow : Window, IFileDialogs
             if (DataContext is MainViewModel vm)
             {
                 vm.Dialogs = this;
-                vm.Exit = Close;
-                vm.StartUpdateCheck();
                 vm.PropertyChanged += OnViewModelChanged;
             }
         };

@@ -18,11 +18,11 @@
 
                     <TextBlock Classes="h2" Text="LEVEL" />
                     <TextBlock Classes="huge" Text="{Binding Level, StringFormat=N0}" />
-                    <NumericUpDown Value="{Binding Level}" Minimum="1" Maximum="60" Increment="1" FormatString="0" IsEnabled="{Binding CanEditLevel}" />
+                    <NumericUpDown Value="{Binding Level}" Minimum="1" Maximum="{Binding MaxLevel}" Increment="1" FormatString="0" IsEnabled="{Binding CanEditLevel}" />
 
                     <TextBlock Classes="h2" Text="STREET CRED" Margin="0,10,0,0" />
                     <TextBlock Classes="big" Text="{Binding StreetCred, StringFormat=N0}" />
-                    <NumericUpDown Value="{Binding StreetCred}" Minimum="1" Maximum="50" Increment="1" FormatString="0" IsEnabled="{Binding CanEditStreetCred}" />
+                    <NumericUpDown Value="{Binding StreetCred}" Minimum="1" Maximum="{Binding MaxStreetCred}" Increment="1" FormatString="0" IsEnabled="{Binding CanEditStreetCred}" />
                 </StackPanel>
             </controls:NotchedBorder>
 
@@ -43,7 +43,7 @@
                                         <StackPanel Spacing="4">
                                             <TextBlock Classes="dim" Text="{Binding Title}" FontSize="10" FontWeight="Bold" LetterSpacing="0.5" TextWrapping="Wrap" MinHeight="30" />
                                             <TextBlock Classes="big" Text="{Binding Value, StringFormat=N0}" />
-                                            <Slider Minimum="3" Maximum="20" Value="{Binding Value}" TickFrequency="1" IsSnapToTickEnabled="True" />
+                                            <Slider Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Value}" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         </StackPanel>
                                     </controls:NotchedBorder>
                                 </DataTemplate>
@@ -65,7 +65,7 @@
                                 <DataTemplate>
                                     <Grid ColumnDefinitions="170,*,42" Margin="0,0,24,6">
                                         <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                        <Slider Grid.Column="1" Minimum="1" Maximum="60" Value="{Binding Value}" TickFrequency="1" IsSnapToTickEnabled="True" />
+                                        <Slider Grid.Column="1" Minimum="1" Maximum="{Binding Maximum}" Value="{Binding Value}" TickFrequency="1" IsSnapToTickEnabled="True" />
                                         <TextBlock Grid.Column="2" Text="{Binding Value, StringFormat=N0}" FontWeight="Bold" Foreground="{StaticResource CpCyan}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                     </Grid>
                                 </DataTemplate>

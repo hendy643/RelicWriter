@@ -66,6 +66,29 @@ public class ModelTests
         Assert.Equal(2, dev2.Points.First(p => p.Type == "Attribute").Unspent);
     }
 
+    [Theory, MemberData(nameof(SyntheticSave.AllVersions), MemberType = typeof(SyntheticSave))]
+    public void AddedItemGoesIntoTheBagAndSurvivesWritingAndReading(uint version)
+    {
+        var file = SyntheticSave.Read(version);
+        foreach (var (n, i) in file.Walk().Select((n, i) => (n, i))) n.Id = (uint)i; // real saves number their nodes by position
+        var inv = Inventory.Read(file)!;
+        var shape = inv.SubInventories[0].Items[1].Shape; // the bag holds eddies and one other item
+        var added = inv.Add(0xABCDEF01, 20, shape, 77)!;
+        Assert.Equal(shape, added.Shape);
+        Assert.Equal(file.Walk().Select((_, i) => (uint)i), file.Walk().Select(n => n.Id));
+
+        var again = Inventory.Read(SaveFile.Read(file.Write()))!;
+        Assert.Equal([1UL, 1_000_000UL], again.SubInventories.Select(s => s.Id));
+        Assert.Equal([3, 1], again.SubInventories.Select(s => s.Items.Count));
+        var yukimura = VehicleId.FromName("Items.Preset_Yukimura_Default").Hash;
+        Assert.Equal(yukimura, again.SubInventories[0].Items[1].RecordHash);
+        var last = again.SubInventories[0].Items[^1];
+        Assert.Equal((0xABCDEF01u, (byte)20), (last.RecordHash, last.RecordLength));
+        Assert.Equal(shape == ItemShape.Gear ? null : 77u, last.Quantity);
+        Assert.Equal(5000u, again.Money!.Quantity);
+        Assert.Equal(VehicleId.FromName("Items.FirstAidWhiffV0").Hash, again.SubInventories[1].Items[0].RecordHash);
+    }
+
     [Theory, MemberData(nameof(GarageVersions))]
     public void VehicleUnlocksSurviveWritingAndReadingTheWholeFile(uint version)
     {

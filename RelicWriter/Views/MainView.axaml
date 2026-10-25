@@ -50,7 +50,8 @@
             <TabItem Header="CHARACTER" IsEnabled="{Binding Character, Converter={x:Static ObjectConverters.IsNotNull}}">
                 <ContentControl Content="{Binding Character}" />
             </TabItem>
-            <TabItem Header="PERKS" IsEnabled="{Binding Perks, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <TabItem Header="PERKS" IsEnabled="{Binding Perks, Converter={x:Static ObjectConverters.IsNotNull}}"
+                     ToolTip.Tip="The perk trees are the ones from game version 2.0. Older saves use a different system the editor cannot edit.">
                 <ContentControl Content="{Binding Perks}" />
             </TabItem>
             <TabItem x:Name="AppearanceTab" Header="APPEARANCE" IsEnabled="{Binding Appearance, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -67,6 +68,9 @@
             </TabItem>
             <TabItem Header="NODES">
                 <ContentControl Content="{Binding Nodes}" />
+            </TabItem>
+            <TabItem Header="ABOUT">
+                <ContentControl Content="{Binding About}" />
             </TabItem>
         </TabControl>
 

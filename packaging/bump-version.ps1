@@ -1,5 +1,5 @@
 # Sets the version of a new release everywhere it is written, ready to be committed on a release branch:
-#   version.json (app and every component), the release entry of the Flatpak metainfo, and, through a build, the project files and manifests.
+#   version.json (app and every component), the release entry of the Flatpak metainfo, the "## Unreleased" heading of CHANGELOG.md (renamed to the version and date), and, through a build, the project files and manifests.
 # Usage: powershell -File packaging/bump-version.ps1 0.2.0     (or 0.2.0-beta.1)
 param([Parameter(Mandatory)][string]$Version)
 $ErrorActionPreference = 'Stop'
@@ -15,6 +15,12 @@ try {
     $meta = 'packaging/flatpak/io.github.hendy643.RelicWriter.metainfo.xml'
     $date = Get-Date -Format 'yyyy-MM-dd'
     (Get-Content $meta -Raw) -replace '<release version="[^"]*" date="[^"]*" />', "<release version=`"$Version`" date=`"$date`" />" | Set-Content $meta -NoNewline
+
+    # The change log's open section becomes this release's; a release with nothing under "## Unreleased" has no notes, so it is refused.
+    $log = [IO.File]::ReadAllText("$PWD/CHANGELOG.md")
+    if ($log -notmatch '(?m)^## Unreleased\s*$') { throw 'CHANGELOG.md has no "## Unreleased" section to release.' }
+    $heading = "## $Version $([char]0x00B7) " + (Get-Date).ToString('d MMMM yyyy', [Globalization.CultureInfo]::InvariantCulture)
+    [IO.File]::WriteAllText("$PWD/CHANGELOG.md", ($log -replace '(?m)^## Unreleased\s*$', $heading), (New-Object Text.UTF8Encoding $false))
 
     # The build copies the numbers into the project files and manifests.
     dotnet build RelicWriter.slnx -c Release

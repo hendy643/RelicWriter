@@ -5,7 +5,7 @@ public sealed record GameImage(int Width, int Height, byte[] Rgba);
 
 /// <summary>
 /// Pictures from the player's own game files, found by the atlas and part the game database names for them: the part is cut out of the atlas texture.
-/// Windows only for now (the archives need the game's Oodle DLL, see <see cref="Oodle"/>).
+/// The archives are decompressed with the managed <see cref="Kraken"/> decoder on every system (docs/kraken.md).
 /// </summary>
 public sealed class GameIcons
 {
@@ -24,7 +24,6 @@ public sealed class GameIcons
     {
         try
         {
-            if (!Oodle.TryLoad(gameDir)) return null;
             var archives = Path.Combine(gameDir, "archive", "pc");
             // Where the game keeps its UI atlases and textures; Phantom Liberty's archive is searched first.
             var files = new[] { Path.Combine("ep1", "ep1_2_gamedata.archive"), Path.Combine("content", "basegame_4_gamedata.archive") }

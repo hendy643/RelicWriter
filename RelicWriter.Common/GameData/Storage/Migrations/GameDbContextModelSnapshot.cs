@@ -47,6 +47,51 @@ namespace RelicWriter.Common.GameData.Storage.Migrations
                     b.ToTable("enum_default");
                 });
 
+            modelBuilder.Entity("RelicWriter.Common.GameData.Storage.ItemRow", b =>
+                {
+                    b.Property<long>("Hash")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("hash");
+
+                    b.Property<int>("Length")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("length");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("category");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<int>("Expansion")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("expansion");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Quality")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("quality");
+
+                    b.Property<int>("Shape")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("shape");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("type");
+
+                    b.HasKey("Hash", "Length");
+
+                    b.ToTable("item");
+                });
+
             modelBuilder.Entity("RelicWriter.Common.GameData.Storage.LocalDataRow", b =>
                 {
                     b.Property<string>("Key")

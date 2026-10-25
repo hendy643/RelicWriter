@@ -10,7 +10,7 @@ namespace RelicWriter.ViewModels;
 /// </summary>
 public static partial class PerkLayout
 {
-    public const double Width = 920, Height = 770;
+    public const double Width = 920;
     public const double HubSize = 76, PerkSize = 54;
     const double RowHeight = 205, TopY = 44, LeafX = 90, LeafY = 40;
     static readonly Dictionary<string, double> Columns = new() { ["Left"] = 150, ["Central"] = 470, ["Right"] = 790 };
@@ -22,7 +22,8 @@ public static partial class PerkLayout
 
     static double RowY(int tier) => TopY + (4 - Math.Clamp(tier, 1, 4)) * RowHeight;
 
-    public static void Place(IReadOnlyList<PerkViewModel> perks)
+    /// <summary>Places the perks and returns the height the picture needs.</summary>
+    public static double Place(IReadOnlyList<PerkViewModel> perks)
     {
         var centres = new Dictionary<string, Point>();
         var taken = new List<(Point Centre, double Size)>();
@@ -45,6 +46,11 @@ public static partial class PerkLayout
                 perk.X = centre.X - perk.Size / 2;
                 perk.Y = centre.Y - perk.Size / 2;
             }
+
+        // A tree with no upper tiers (the Relic tree is one row) is moved up to the top instead of being left at the bottom.
+        var shift = perks.Count == 0 ? 0 : perks.Min(p => p.Y) - 40;
+        if (shift > 0) foreach (var perk in perks) perk.Y -= shift;
+        return perks.Count == 0 ? 0 : perks.Max(p => p.Y + p.Size) + 50;   // room for the names under the lowest perks
     }
 
     static int Order(string name, PerkViewModel perk) =>

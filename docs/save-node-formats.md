@@ -111,6 +111,8 @@ Node name `itemData`. One item. No children.
 The `kind` rule and the field order come from CSE (`itemData.h`) and CyberCAT. **verified**: using them, all itemData nodes in one save of each version were consumed exactly, with no leftovers. The other versions' counts are in the same ranges (kind 1 is the second most common, kind 0 the rarest).
 What kinds 0, 1 and 2 mean in game terms (for example whether kind 2 is gear) hasn't been checked against item names.
 
+**Adding an item** (`Inventory.Add`): the node is a copy of the shortest itemData of the same shape (in the newest saves gear with an empty mod tree is 87 bytes and a quantity-only item 25), with the record hash and length written over the copy's, a new random seed for gear (never 2, which marks the quantity-only kind in saves without a kind byte) and the quantity for the other shapes. It goes after the last item of the bag (sub-inventory 1); that item's gap, which held the next record, moves behind the copy and now holds the copy's item id header, the bag's count is raised by one and node ids are renumbered, since in every save checked a node's id is its position in the walk. Re-reading 100 real saves after adding one item of each shape agrees, and writing again is byte for byte the same. Whether the game accepts it is untested.
+
 **Mod root header** (16 bytes): TweakDBID, `u32` unknown, `f32` unknown.
 
 ### ItemMod

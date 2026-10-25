@@ -36,7 +36,7 @@ A `gamedataLocKeyWrapper` value is a u32 primary key followed by a u32 that is 0
 
 Format "RDAR", version 12. Header (40 bytes): magic, version, u64 index position, u32 index size, and more not used. The index has a 28-byte header (u32 values at 16, 20 and 24 are the file, segment and dependency counts), then 56-byte file entries (u64 FNV-1a hash of the lower-case path with backslashes, 8 bytes of time, u32 segment count, u32 first segment index at offset 20, and more), then 16-byte segments (u64 file offset, u32 stored size, u32 real size). The archive stores no file names. A segment whose stored size differs from its real size is `KARK`, the real size, then an Oodle Kraken stream.
 
-Oodle is loaded from the game's own `bin/x64/oo2ext_7_win64.dll` (`OodleLZ_Decompress`). That DLL is a Windows library, so **reading the game files works on Windows only**: the Extractor, and the vehicle pictures in the app. Names come from the game database on every platform.
+Segments are decompressed with the managed `Kraken` decoder on every system (`docs/kraken.md`); the game's own Oodle DLL is not used.
 
 Only the first segment of a file is read; that is all the on-screen text needs.
 
@@ -72,7 +72,7 @@ Chain, read from the 2.5 files: vehicle record `.icon` (a TweakDBID flat) gives 
 
 The atlas is a CR2W whose first slot imports `base\gameplay\gui\common\icons\vehicles_icons.xbm` and lists parts (`partName`, `clippingRectInUVCoords` with Left/Top/Right/Bottom floats; zero sides are omitted). The `.xbm` is a CR2W (object 0: `width`, `height`, `setup` with `compression`) whose pixels are the file's second archive segment: 4096x4096 BC3 (`TCM_DXTAlpha`), no mipmaps, 4x4 blocks in rows. Rows run bottom-up, so a part's rectangle is cut at `width - top - height` and flipped.
 
-Checked on all 105 catalogue vehicles by looking at a contact sheet (all recognisable, none upside down) and by a test that each decodes to a non-blank image. Only BC3 is decoded and only the first (4096) slot is used; Phantom Liberty vehicles were found in the same atlas but a second PL atlas, if one exists, was not looked for. Windows only (Oodle).
+Checked on all 105 catalogue vehicles by looking at a contact sheet (all recognisable, none upside down) and by a test that each decodes to a non-blank image. Only BC3 is decoded and only the first (4096) slot is used; Phantom Liberty vehicles were found in the same atlas but a second PL atlas, if one exists, was not looked for.
 
 The app does not decode these at run time: `RelicWriter.Extractor icons <game dir> <out dir>` writes each icon at half size as a PNG, and the PNGs are embedded in `RelicWriter.Common` (about 5 MB). Re-run it after a game update that changes the icons. The embedded images are CD PROJEKT RED's artwork; whether they may be redistributed was not checked.
 

@@ -23,16 +23,18 @@ Everything the app knows about the game (not about the save format) is in one SQ
 
 ## Tables
 
-`meta` (game_version, max_save_version, created_utc), `enum_default` (type to its first value, what the save leaves out), `record` (TweakDBID hash + name length to record name and in-game display name), `vehicle` (record, sort, atlas, atlas_part), `perk_tree` (tree to the name of its attribute data in the save), `perk` (id, tree, sort, max_level, cost_per_level, display_name, requires: the perks that must be maxed first, space separated; attribute_points: the attribute value its tier needs), `constant` (for example `official_max_perk_points`), and `local_data`.
+`meta` (game_version, max_save_version, created_utc), `enum_default` (type to its first value, what the save leaves out), `record` (TweakDBID hash + name length to record name and in-game display name), `item` (the item catalogue, below), `vehicle` (record, sort, atlas, atlas_part), `perk_tree` (tree to the name of its attribute data in the save), `perk` (id, tree, sort, max_level, cost_per_level, display_name, requires: the perks that must be maxed first, space separated; attribute_points: the attribute value its tier needs), `constant` (for example `official_max_perk_points`), and `local_data`.
+
+**`item`** (hash, length, name, category, type, quality, shape, expansion) is the catalogue the Inventory tab's picker adds from: every record of the seven TweakDB item types that carry in-game text (`ItemTypes` in `GameDataExport`) that has a display name (not "!OBSOLETE") and an item type link, 7,260 in game 2.5. `name` is the in-game name. `category`, `type` and `quality` are the names the record's `.itemCategory`, `.itemType` and `.quality` links point at; TweakDB stores only hashes, so they are found by hashing the known names (`Categories`, `ItemTypeNames`, `Qualities`), and a type the list does not cover is NULL (most cyberware: its type hash is unknown). Recipes (their own record type) are category "Recipe"; the category of a record with no link is "Other". `expansion` is 1 for records that are only in the Phantom Liberty file. `shape` is the `ItemShape` of the save node (0 stack, 1 quantity only, 2 gear): the shape of that item in the given saves where one was seen, else the most common one for its record type and item type. Records that are not obtainable in play (NPC-only variants, vehicle weapons) are not told apart, and there is no "since game version" column, so the catalogue is the 2.5 one. The record table's names win in the inventory view; an item only the catalogue knows takes its name from it (`RecordNames.Display`).
 
 **`local_data`** (key, value) holds the user's own values: the game folder (`game_folder`, remembered by `GameLocator.Remember`) and any later settings, read and written through `LocalData`. It exists in the schema migration only; no data migration writes to it (a test checks this), so an update never touches what the user set. It is not part of the in-memory `GameDatabase` snapshot.
 
-**Vehicle pictures are not in the database.** `vehicle.atlas` is the hash of the texture atlas file's path in the game archives and `atlas_part` the part of it. The app cuts the picture out of the player's own install at run time (`GameIcons`, Windows only because the archives need the game's Oodle DLL); without the game the tiles show a drawn glyph.
+**Vehicle pictures are not in the database.** `vehicle.atlas` is the hash of the texture atlas file's path in the game archives and `atlas_part` the part of it. The app cuts the picture out of the player's own install at run time (`GameIcons`; the archives are decompressed with the game's Oodle DLL on Windows and the managed `Kraken` decoder elsewhere); without the game the tiles show a drawn glyph.
 
 ## Making a new migration
 
 ```
-dotnet run --project RelicWriter.Extractor -- gamedata --game <game dir> --out Database --saves <saves dir>
+dotnet run --project RelicWriter.Extractor -- gamedata --game <game dir> --out Database --saves <saves dir>   # on Linux add --game-version <x.y>: the exe's version resource is read on Windows only
 dotnet build RelicWriter.slnx
 ```
 

@@ -66,8 +66,7 @@ public static partial class GameLocator
         var config = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } y ? y : Path.Combine(home, ".config");
         var flatpak = Path.Combine(home, ".var", "app");
 
-        foreach (var c in SteamCandidates([Path.Combine(share, "Steam"), Path.Combine(home, ".steam", "steam"), Path.Combine(home, ".steam", "root"),
-                     Path.Combine(flatpak, "com.valvesoftware.Steam", ".local", "share", "Steam")])) yield return c;
+        foreach (var c in SteamCandidates(LinuxSteamRoots())) yield return c;
 
         // Lutris: one YAML per game, naming the exe and the Wine prefix.
         foreach (var dir in new[] { Path.Combine(config, "lutris", "games"), Path.Combine(flatpak, "net.lutris.Lutris", "config", "lutris", "games") })
@@ -84,22 +83,56 @@ public static partial class GameLocator
         }
     }
 
+    static string LinuxHome => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    static string LinuxShare => Environment.GetEnvironmentVariable("XDG_DATA_HOME") is { Length: > 0 } x ? x : Path.Combine(LinuxHome, ".local", "share");
+    static string LinuxConfig => Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } y ? y : Path.Combine(LinuxHome, ".config");
+
+    static string[] LinuxSteamRoots() =>
+    [
+        Path.Combine(LinuxShare, "Steam"), Path.Combine(LinuxHome, ".steam", "steam"), Path.Combine(LinuxHome, ".steam", "root"),
+        Path.Combine(LinuxHome, ".var", "app", "com.valvesoftware.Steam", ".local", "share", "Steam"),
+    ];
+
+    /// <summary>
+    /// The Wine prefixes the game may run in on Linux (Steam's Proton prefix in every library, the prefix of a Lutris entry, the prefix of a Heroic
+    /// game). Some may not exist; the saves are in drive_c/users/*/Saved Games/CD Projekt Red/Cyberpunk 2077 inside them.
+    /// </summary>
+    public static IEnumerable<string> LinuxWinePrefixes()
+    {
+        foreach (var library in SteamLibraryDirs(LinuxSteamRoots()))
+            yield return Path.Combine(library, "steamapps", "compatdata", SteamAppId, "pfx");
+
+        foreach (var dir in new[] { Path.Combine(LinuxConfig, "lutris", "games"), Path.Combine(LinuxHome, ".var", "app", "net.lutris.Lutris", "config", "lutris", "games") })
+            if (Directory.Exists(dir))
+                foreach (var file in Directory.EnumerateFiles(dir, "*.yml"))
+                    if (LutrisPrefix(SafeRead(file)) is { } prefix) yield return prefix;
+
+        foreach (var heroic in new[] { Path.Combine(LinuxConfig, "heroic"), Path.Combine(LinuxHome, ".var", "app", "com.heroicgameslauncher.hgl", "config", "heroic") })
+            foreach (var app in new[] { GogGameId, EpicAppName })
+                foreach (var prefix in HeroicPrefixes(SafeRead(Path.Combine(heroic, "GamesConfig", app + ".json")))) yield return prefix;
+    }
+
     // ---- Steam (both systems) ----
 
-    static IEnumerable<string> SteamCandidates(IEnumerable<string> roots)
+    static IEnumerable<string> SteamLibraryDirs(IEnumerable<string> roots)
     {
         foreach (var root in roots.Where(Directory.Exists))
         {
-            var libraries = new List<string> { root };
+            yield return root;
             var vdf = Path.Combine(root, "steamapps", "libraryfolders.vdf");
-            if (File.Exists(vdf)) libraries.AddRange(SteamLibraries(SafeRead(vdf)));
-            foreach (var library in libraries)
-            {
-                var steamapps = Path.Combine(library, "steamapps");
-                // The app manifest names the install folder; the default name is the fallback.
-                var installDir = SteamInstallDir(SafeRead(Path.Combine(steamapps, $"appmanifest_{SteamAppId}.acf"))) ?? FolderName;
-                yield return Path.Combine(steamapps, "common", installDir);
-            }
+            if (File.Exists(vdf))
+                foreach (var library in SteamLibraries(SafeRead(vdf))) yield return library;
+        }
+    }
+
+    static IEnumerable<string> SteamCandidates(IEnumerable<string> roots)
+    {
+        foreach (var library in SteamLibraryDirs(roots))
+        {
+            var steamapps = Path.Combine(library, "steamapps");
+            // The app manifest names the install folder; the default name is the fallback.
+            var installDir = SteamInstallDir(SafeRead(Path.Combine(steamapps, $"appmanifest_{SteamAppId}.acf"))) ?? FolderName;
+            yield return Path.Combine(steamapps, "common", installDir);
         }
     }
 
@@ -121,6 +154,28 @@ public static partial class GameLocator
         if (YamlValue("prefix").Match(yaml) is { Success: true } prefix)
             foreach (var gog in new[] { Path.Combine("GOG Games", FolderName), Path.Combine("Program Files (x86)", "GOG Galaxy", "Games", FolderName), Path.Combine("Program Files", "Epic Games", FolderName) })
                 yield return Path.Combine(prefix.Groups[1].Value, "drive_c", gog);
+    }
+
+    /// <summary>The Wine prefix of a Lutris game YAML for Cyberpunk, or null.</summary>
+    internal static string? LutrisPrefix(string yaml) =>
+        yaml.Contains(Slug, StringComparison.OrdinalIgnoreCase) && YamlValue("prefix").Match(yaml) is { Success: true } m ? m.Groups[1].Value : null;
+
+    /// <summary>The "winePrefix" values anywhere in a Heroic GamesConfig/&lt;appName&gt;.json (with Proton the prefix is the "pfx" folder inside it, so both are given).</summary>
+    internal static IEnumerable<string> HeroicPrefixes(string json)
+    {
+        JsonElement root;
+        try { root = JsonDocument.Parse(json).RootElement; }
+        catch (JsonException) { yield break; }
+        var found = new List<string>();
+        void Walk(JsonElement e)
+        {
+            if (e.ValueKind == JsonValueKind.Object)
+                foreach (var p in e.EnumerateObject())
+                    if (p.Name == "winePrefix" && p.Value.GetString() is { Length: > 0 } v) found.Add(v);
+                    else Walk(p.Value);
+        }
+        Walk(root);
+        foreach (var prefix in found) { yield return prefix; yield return Path.Combine(prefix, "pfx"); }
     }
 
     /// <summary>Install folders of Cyberpunk entries in a Heroic installed.json (GOG: <c>{"installed":[{appName, install_path}]}</c>; Epic/legendary: <c>{appName: {install_path, title}}</c>).</summary>

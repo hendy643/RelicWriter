@@ -29,7 +29,7 @@ public sealed class TweakDb
     const int ValueSize = sizeof(ulong), SecondaryHashOffset = sizeof(uint), LinkLengthOffset = sizeof(uint);
 
     /// <summary>One file's tables; files are searched newest first so Phantom Liberty can replace a base game flat.</summary>
-    sealed record Tables(FlatTable LocKeys, FlatTable Links, FlatTable Resources, FlatTable CNames, string[] CNamePool, FlatTable Strings, string[] StringPool, FlatTable Ints, FlatTable Arrays, int[] ArrayAt);
+    sealed record Tables(FlatTable LocKeys, FlatTable Links, FlatTable Resources, FlatTable CNames, string[] CNamePool, FlatTable Strings, string[] StringPool, FlatTable Ints, FlatTable Arrays, int[] ArrayAt, byte[] RecordTable);
 
     readonly List<Tables> files = [];
 
@@ -138,6 +138,40 @@ public sealed class TweakDb
         return at;
     }
 
+    // The records section: u32 count, then 12 bytes per record: u32 name hash, u8 name length and 3 padding bytes, u32 hash of the record's type.
+    const int RecordSize = 12, RecordLengthOffset = 4, RecordTypeOffset = 8;
+
+    static byte[] ReadRecords(FileStream fs, uint at)
+    {
+        fs.Position = at;
+        Span<byte> count = stackalloc byte[CountSize];
+        fs.ReadExactly(count);
+        var table = new byte[BinaryPrimitives.ReadUInt32LittleEndian(count) * RecordSize];
+        fs.ReadExactly(table);
+        return table;
+    }
+
+    /// <summary>
+    /// Every record in the files, as (hash, name length, hash of the type, whether the base game file has it). A record in a later file replaces
+    /// the one in an earlier file; one that only the Phantom Liberty file has is expansion content.
+    /// </summary>
+    public IEnumerable<(uint Hash, byte Length, uint Type, bool InBaseGame)> Records()
+    {
+        var baseGame = new HashSet<ulong>();
+        if (files.Count > 0)
+            foreach (var r in Rows(files[^1])) baseGame.Add(Id(r.Hash, r.Length));
+        var seen = new HashSet<ulong>();
+        foreach (var f in files)
+            foreach (var r in Rows(f))
+                if (seen.Add(Id(r.Hash, r.Length))) yield return (r.Hash, r.Length, r.Type, baseGame.Contains(Id(r.Hash, r.Length)));
+    }
+
+    static IEnumerable<(uint Hash, byte Length, uint Type)> Rows(Tables f)
+    {
+        for (var i = 0; i < f.RecordTable.Length; i += RecordSize)
+            yield return (BinaryPrimitives.ReadUInt32LittleEndian(f.RecordTable.AsSpan(i)), f.RecordTable[i + RecordLengthOffset], BinaryPrimitives.ReadUInt32LittleEndian(f.RecordTable.AsSpan(i + RecordTypeOffset)));
+    }
+
     static Tables? Load(string path)
     {
         using var fs = File.OpenRead(path);
@@ -172,7 +206,7 @@ public sealed class TweakDb
         var strings = Read(StringType, out var stringBlock);
         var ints = Read(Int32Type, out _);
         var arrays = Read(LinkArrayType, out var arrayBlock);
-        return new Tables(locKeys, links, resources, cnames, ReadStrings(cnameBlock), strings, ReadStrings(stringBlock), ints, arrays, ArrayOffsets(arrayBlock));
+        return new Tables(locKeys, links, resources, cnames, ReadStrings(cnameBlock), strings, ReadStrings(stringBlock), ints, arrays, ArrayOffsets(arrayBlock), ReadRecords(fs, recordsAt));
     }
 
     static readonly ulong LocKeyType = Fnv("gamedataLocKeyWrapper"), TweakDbIdType = Fnv("TweakDBID"), ResourceType = Fnv("raRef:CResource"), CNameType = Fnv("CName"), StringType = Fnv("String"), Int32Type = Fnv("Int32"), LinkArrayType = Fnv("array:TweakDBID");

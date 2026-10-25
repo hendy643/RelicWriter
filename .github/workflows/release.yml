@@ -16,6 +16,10 @@ permissions:
 
 concurrency: release
 
+# Release builds show the plain version; any other build shows the commit hash after it (Directory.Build.targets).
+env:
+  RELICWRITER_RELEASE: "true"
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -93,11 +97,32 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - run: dotnet build RelicWriter.Installer -c Release
+      - run: packaging/windows/build.sh
+        shell: bash
+      # Signed with our own self-signed certificate (docs/signing.md) when the secrets exist; otherwise the exe is released unsigned.
+      - name: Sign the exe
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.SIGNING_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.SIGNING_PFX_PASSWORD }}
+        run: |
+          if (-not $env:PFX_BASE64) { Write-Host 'No signing certificate in the secrets; the exe stays unsigned.'; exit 0 }
+          $pfx = Join-Path $env:RUNNER_TEMP 'signing.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_BASE64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          $exe = 'packaging\windows\publish\RelicWriter.exe'
+          & $signtool.FullName sign /f $pfx /p $env:PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /d RelicWriter $exe
+          if ($LASTEXITCODE -ne 0) { throw 'signtool failed.' }
+          Remove-Item $pfx
+          # A self-signed certificate is not trusted, so Status is not "Valid"; what matters is that the file carries our signature and a timestamp.
+          $sig = Get-AuthenticodeSignature $exe
+          if (-not $sig.SignerCertificate -or -not $sig.TimeStamperCertificate) { throw "The exe is not signed and timestamped ($($sig.Status))." }
+          "Signed by $($sig.SignerCertificate.Subject), thumbprint $($sig.SignerCertificate.Thumbprint)"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: RelicWriter.Installer/bin/Release/RelicWriter.msi
+          path: packaging/windows/publish/RelicWriter.exe
+          if-no-files-found: error
 
   linux-publish:
     needs: prepare
@@ -144,6 +169,9 @@ jobs:
   publish:
     needs: [check, prepare, windows, flatpak]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write   # the keyless Sigstore signature below is made with this job's identity
     steps:
       - uses: actions/checkout@v4
         with:
@@ -155,10 +183,18 @@ jobs:
         run: |
           v='${{ needs.check.outputs.version }}'
           mkdir release
-          cp artifacts/windows/RelicWriter.msi "release/RelicWriter-$v-win-x64.msi"
+          zip -j "release/RelicWriter-$v-win-x64.zip" artifacts/windows/RelicWriter.exe
           cp artifacts/flatpak/RelicWriter.flatpak "release/RelicWriter-$v-linux-x86_64.flatpak"
-          # The updater looks for this file among the release's files; it is the version.json of the released commit.
-          cp version.json release/version.json
+      # Keyless Sigstore signatures (docs/signing.md): one <file>.sigstore.json bundle per file, checked straight away against this workflow's identity.
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign the files with cosign
+        run: |
+          for f in release/*; do
+            cosign sign-blob --yes --bundle "$f.sigstore.json" "$f"
+            cosign verify-blob --bundle "$f.sigstore.json" \
+              --certificate-identity-regexp '^https://github.com/hendy643/RelicWriter/\.github/workflows/release\.yml@' \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com "$f"
+          done
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.check.outputs.version }}

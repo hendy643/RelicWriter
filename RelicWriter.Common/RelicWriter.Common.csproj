@@ -5,10 +5,45 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
-        <Version>1.0.0</Version>
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
-        <FileVersion>1.0.0.0</FileVersion>
+        <Version>1.1.0</Version>
+        <AssemblyVersion>1.1.0.0</AssemblyVersion>
+        <FileVersion>1.1.0.0</FileVersion>
     </PropertyGroup>
+    <!--
+        CHANGELOG.md at the repository root becomes ChangelogData.Entries (obj/Changelog.g.cs) on every build where the file changed. A line starting with "## " begins an entry,
+        a line starting with "- " is one of its lines; anything else is ignored.
+    -->
+    <UsingTask TaskName="GenerateChangelog" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+        <ParameterGroup>
+            <ChangelogFile ParameterType="System.String" Required="true" />
+            <OutputFile ParameterType="System.String" Required="true" />
+        </ParameterGroup>
+        <Task>
+            <Using Namespace="System.IO" />
+            <Using Namespace="System.Linq" />
+            <Using Namespace="System.Text" />
+            <Code Type="Fragment" Language="cs"><![CDATA[
+                string Lit(string text) => "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+                var entries = new System.Collections.Generic.List<(string Heading, System.Collections.Generic.List<string> Lines)>();
+                foreach (var raw in File.ReadAllLines(ChangelogFile))
+                {
+                    var line = raw.Trim();
+                    if (line.StartsWith("## ")) entries.Add((line.Substring(3).Trim(), new System.Collections.Generic.List<string>()));
+                    else if (line.StartsWith("- ") && entries.Count > 0) entries[entries.Count - 1].Lines.Add(line.Substring(2).Trim());
+                }
+                var code = new StringBuilder("// Made from CHANGELOG.md by the GenerateChangelog build task; do not edit.\nnamespace RelicWriter.Common.AppInfo;\n\npublic static class ChangelogData\n{\n    public static readonly IReadOnlyList<ChangelogEntry> Entries =\n    [\n");
+                foreach (var e in entries) code.Append("        new(" + Lit(e.Heading) + ", [" + string.Join(", ", e.Lines.Select(Lit)) + "]),\n");
+                code.Append("    ];\n}\n");
+                if (!File.Exists(OutputFile) || File.ReadAllText(OutputFile) != code.ToString()) File.WriteAllText(OutputFile, code.ToString());
+            ]]></Code>
+        </Task>
+    </UsingTask>
+    <Target Name="GenerateChangelog" BeforeTargets="CoreCompile;CoreGenerateAssemblyInfo">
+        <GenerateChangelog ChangelogFile="$(MSBuildThisFileDirectory)..\CHANGELOG.md" OutputFile="$(MSBuildProjectDirectory)\$(IntermediateOutputPath)Changelog.g.cs" />
+        <ItemGroup>
+            <Compile Include="$(IntermediateOutputPath)Changelog.g.cs" />
+        </ItemGroup>
+    </Target>
     <ItemGroup>
         <!-- The game database: SQL scripts made by RelicWriter.Extractor gamedata, run into an in-memory SQLite database at start (see docs/game-database.md). -->
         <EmbeddedResource Include="..\Database\*.sql" LogicalName="Database.%(Filename)%(Extension)" />

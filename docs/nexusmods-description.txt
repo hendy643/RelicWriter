@@ -1,0 +1,99 @@
+==== SHORT DESCRIPTION (max 350 characters; paste into the short description box) ====
+
+Save editor for Cyberpunk 2077 and Phantom Liberty (patch 2.5). Edit level, street cred, attributes, skills, perks (including Relic) following the game's own rules, face shape presets, inventory and vehicles. Reads saves from older game versions too. Windows and Linux. Keeps a backup of your save. Open source (GPL-3.0).
+
+
+==== FULL DESCRIPTION (BBCode; paste into the description box) ====
+
+[size=6][b]RelicWriter[/b][/size]
+[b]A save game editor for Cyberpunk 2077 and Phantom Liberty (patch 2.5), styled like the game's own menus.[/b]
+
+[line]
+
+[size=5][b]What it does[/b][/size]
+[list]
+[*][b]Character[/b]: level, street cred, attributes, skills, money and unspent attribute, perk and Relic points.
+[*][b]Perks[/b]: every perk of the five attribute trees and the Phantom Liberty Relic tree, drawn as a tree. Click to buy a level, right-click to sell one. It follows the game's own rules: levels cost points, the perks a perk needs must be maxed first, and its attribute must be high enough (buying raises the attribute for you; lowering an attribute takes perks back). Unspent points stay in step. Buttons set the points needed for every perk, or the official maximum.
+[*][b]Appearance[/b]: the face shape presets (eyes, nose, mouth, jaw), and a read-only list of the character creator's parts.
+[*][b]Inventory and Vehicles[/b]: items and quantities by their in-game names, and the garage with a tile for each vehicle.
+[*][b]Save Info and Nodes[/b]: details of the save, and a raw view of its data for the curious.
+[/list]
+
+[size=5][b]Saves it reads[/b][/size]
+Save versions 193 to 277 (the game's release up to patch 2.5). Anything the editor does not understand is kept exactly as it was when you save.
+
+[size=5][b]Install[/b][/size]
+[list]
+[*][b]Windows 10/11[/b]: download the .zip from the Files tab, unzip it anywhere and run RelicWriter.exe. It is a single self-contained file; there is nothing to install and it needs no administrator rights.
+[*][b]Linux (beta)[/b]: install the .flatpak from the Files tab. This package is a beta: it builds and starts, but it has had little testing, so please report any problems.
+[/list]
+Then open [b]sav.dat[/b] from your saves folder (Saved Games\CD Projekt Red\Cyberpunk 2077\<save name> on Windows). The editor lists the saves it finds. The first time you save, it keeps a backup of the original file next to it.
+
+[size=5][b]Please read[/b][/size]
+[list]
+[*]Close the game before editing, and turn off cloud save sync for the save you edit, or it may be overwritten.
+[*]The backup is only made the first time. Copy your saves yourself before you experiment.
+[*]Edits come from reading the game's data and rules. Saves written by RelicWriter have not been tested in the game itself yet, so treat the first edit as an experiment and keep your backup.
+[/list]
+
+[size=5][b]Known limitations[/b][/size]
+[list]
+[*]Appearance: no 3D preview, and no skin, hair or makeup changes yet.
+[*]The perk tree layout is worked out from the perk names, not copied from the game, so some perks may sit in a different place than in the game. Perks have no icons yet.
+[*]Vehicle pictures are read from your own game files, and that works on Windows only. If the game is not found, use the GAME FOLDER button.
+[*]The Linux version is a beta.
+[*]There is no built-in update check. Check this page or the GitHub releases for new versions.
+[*]The Windows exe is not signed, so SmartScreen may warn you.
+[/list]
+
+[size=5][b]About the AI in this[/b][/size]
+RelicWriter was built with heavy use of AI: most of the code was written by Claude (Anthropic's Claude Code), working from my instructions, with me deciding what to build and how it should behave. I'm telling you up front because of where you're going to use it.
+
+Yes, I'm aware of the irony. Cyberpunk 2077 is a game about megacorps, machines that think and a world that has handed far too much to both, and here I am using a corporate AI to write a tool for editing the save of a man who may or may not be a ghost in the machine. If you wake up and V is somehow in charge of your inventory, you'll know why.
+
+What this means for you in practice:
+[list]
+[*]The code is open source (see the links), so you can read exactly what it does rather than take anyone's word for it, mine or the AI's.
+[*]AI makes mistakes, and it can sound sure while doing it. That is the main reason for the backup, and for the warning that edits have not been tested in the game yet.
+[*]Bug reports are welcome and read by a person.
+[/list]
+
+[size=5][b]Links[/b][/size]
+[list]
+[*][url=https://github.com/hendy643/RelicWriter]Source code on GitHub[/url]
+[*][url=https://github.com/hendy643/RelicWriter/releases]Releases[/url]
+[*][url=https://github.com/hendy643/RelicWriter/issues]Report a bug or ask for a feature[/url]
+[/list]
+
+[size=5][b]Open source[/b][/size]
+RelicWriter is open source under the GPL-3.0 license. You are welcome to fork it. The names and perk data come from a database built from the game's files; that text belongs to CD PROJEKT RED and is not covered by the license. No game files are included beyond that.
+
+[i]Cyberpunk 2077 and Phantom Liberty are trademarks of CD PROJEKT S.A. This is an unofficial fan project, not affiliated with or endorsed by CD PROJEKT RED.[/i]
+
+
+==== CREDITS (plain text; paste into the credits box) ====
+
+Lead developer: hendy643 - leading a team of one human and two AIs.
+
+CD PROJEKT RED - Cyberpunk 2077 and Phantom Liberty. The record names, item, vehicle and perk names, perk costs and requirements come from the game's own data and belong to CD PROJEKT RED. Vehicle pictures are read from your own game install. Cyberpunk 2077 and Phantom Liberty are trademarks of CD PROJEKT S.A. This is an unofficial fan project, not affiliated with or endorsed by CD PROJEKT RED.
+
+Claude (Claude Code, by Anthropic) - wrote most of the code, tests and documentation, under my direction.
+
+GitHub Copilot - fixed the Linux build script in CI.
+
+Save format research:
+CyberCAT by Mathies Foels (MIT) - https://github.com/WolvenKit/CyberCAT
+CyberpunkSaveEditor by PixelRick (MIT) - https://github.com/PixelRick/CyberpunkSaveEditor
+CyberCAT-SimpleGUI by DeweySalt (MIT) - https://github.com/Deweh/CyberCAT-SimpleGUI
+CP2077SaveEditor (MIT)
+WolvenKit - read for reference only, no code used - https://github.com/WolvenKit/WolvenKit
+Red Modding wiki - https://wiki.redmodding.org/
+Ghidra
+
+Libraries: Avalonia, CommunityToolkit.Mvvm, K4os.Compression.LZ4, BCnEncoder.Net, Entity Framework Core with SQLite, xUnit.net.
+
+Fonts: Rajdhani (Indian Type Foundry) and Inter (Rasmus Andersson), both under the SIL Open Font License.
+
+Packaging: Flatpak and GitHub Actions.
+
+Full list with licenses: https://github.com/hendy643/RelicWriter/blob/master/docs/credits.md

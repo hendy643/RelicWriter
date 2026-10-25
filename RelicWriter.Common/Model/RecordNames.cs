@@ -16,8 +16,8 @@ public static partial class RecordNames
     /// <summary>The name the game itself gives the record, or null.</summary>
     public static string? GameName(uint hash, byte length) => GameDatabase.Current.Record(hash, length)?.DisplayName;
 
-    /// <summary>The name to show, or null when nothing is known about the id.</summary>
-    public static string? Display(uint hash, byte length) => GameDatabase.Current.Record(hash, length) is { } known ? known.DisplayName ?? Humanize(known.Name) : null;
+    /// <summary>The name to show (an item the record table lacks takes its catalogue name), or null when nothing is known about the id.</summary>
+    public static string? Display(uint hash, byte length) => GameDatabase.Current.Record(hash, length) is { } known ? known.DisplayName ?? Humanize(known.Name) : GameDatabase.Current.Item(hash, length)?.Name;
 
     /// <summary>"Items.Preset_Yukimura_Default" becomes "Yukimura Default".</summary>
     public static string Humanize(string record)

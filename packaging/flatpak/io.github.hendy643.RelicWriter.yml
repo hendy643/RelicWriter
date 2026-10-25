@@ -10,7 +10,6 @@ finish-args:
   - --share=ipc
   - --socket=x11            # Avalonia has no Wayland backend; XWayland serves it
   - --device=dri            # OpenGL
-  - --share=network         # the check for a newer release
   # Where the save files and the game live (read by SaveLocator and GameLocator): Steam, Steam as a Flatpak, Lutris and Heroic.
   - --filesystem=~/.local/share/Steam
   - --filesystem=~/.steam
@@ -19,7 +18,11 @@ finish-args:
   - --filesystem=~/.var/app/com.heroicgameslauncher.hgl
   - --filesystem=~/.config/lutris:ro
   - --filesystem=~/.config/heroic:ro
-  - --filesystem=~/Games
+  - --filesystem=~/Games:rw
+  # Steam libraries on a second drive. Read-write because the Proton prefix with the saves (steamapps/compatdata) sits in the library.
+  - --filesystem=/mnt
+  - --filesystem=/media
+  - --filesystem=/run/media
 
 modules:
   - name: relicwriter
