@@ -3,7 +3,7 @@
 All notable changes to RelicWriter, newest first. The About tab shows this file. Write for players: one short line per change, under the heading of the version it ships in.
 Format: `## <version> · <date>` for a release (`## Unreleased` while it is not out), then one `- ` line per change.
 
-## Unreleased
+## 1.1.0 · 25 October 2026
 - New About tab with the version, credits and this list.
 - Add items to your bag from the game's own item list: search by name (it forgives typos and capital letters), narrow it by category, type and quality. Items from Phantom Liberty are offered only when Phantom Liberty is switched on.
 - The editor now follows the game version of your save. Level cap, skill limits, which skills are shown and the Perks tab all match that version, and Save Info lets you move a save up to a later patch of the same save format.

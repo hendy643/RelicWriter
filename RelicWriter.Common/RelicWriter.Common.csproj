@@ -5,9 +5,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
-        <Version>1.0.0</Version>
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
-        <FileVersion>1.0.0.0</FileVersion>
+        <Version>1.1.0</Version>
+        <AssemblyVersion>1.1.0.0</AssemblyVersion>
+        <FileVersion>1.1.0.0</FileVersion>
     </PropertyGroup>
     <!--
         CHANGELOG.md at the repository root becomes ChangelogData.Entries (obj/Changelog.g.cs) on every build where the file changed. A line starting with "## " begins an entry,
