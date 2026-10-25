@@ -46,10 +46,6 @@ Saves from observed save versions 193 to 277 are supported.
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - Windows or Linux. Vehicle pictures need an installed copy of the game.
 
-## Verifying a download
-
-Each release file has a `.sigstore.json` signature made by the Release workflow. To check one, install [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) and see `docs/signing.md`. The Windows exe is also signed with our own self-signed certificate, which Windows does not trust by default.
-
 ## Build and run
 
 ```

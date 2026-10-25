@@ -30,9 +30,9 @@ What the run does:
 
 0. **check**: reads the version from `version.json` and stops quietly if its tag exists (a merge that is not a release).
 1. **prepare** (Windows): checks the role and that the metainfo has a release entry for the version, builds, runs the tests and checks that the project files agree with `version.json`.
-2. **windows**: `packaging/windows/build.sh` (one self-contained, single-file, trimmed, ReadyToRun exe, see `docs/windows.md`).
+2. **windows**: `dotnet build RelicWriter.Installer -c Release` (self-contained, trimmed, ReadyToRun MSI, see `docs/installer.md`).
 3. **linux-publish** and **flatpak**: the app is published for `linux-x64` (`packaging/flatpak/build.sh --publish-only`), then packed into `RelicWriter.flatpak` by the Flatpak builder action in the Flathub CI image (see `docs/flatpak.md`).
-4. **publish**: signs the files with cosign (keyless, `docs/signing.md`), creates the GitHub release and its tag `vX.Y.Z` on that commit, with `RelicWriter-<version>-win-x64.zip` (holding `RelicWriter.exe`), `RelicWriter-<version>-linux-x86_64.flatpak` (each with a `.sigstore.json` signature) 
+4. **publish**: creates the GitHub release and its tag `vX.Y.Z` on that commit, with `RelicWriter-<version>-win-x64.msi` and `RelicWriter-<version>-linux-x86_64.flatpak`.
 
 The `database` number in `version.json` is not touched by a release: it follows the save version the game data was built for (the Extractor's `gamedata` command writes it).
 
@@ -41,5 +41,4 @@ The `database` number in `version.json` is not touched by a release: it follows 
 - The workflow never commits. Nothing exists on GitHub until the last job creates the tag and release, so a failed run can simply be started again.
 - Two releases at once are prevented (`concurrency`), and a tag that exists is refused.
 - The Flatpak action, action versions (`@v4`, `@v6`, `@v2`) and the Flathub CI image tag are as of writing; the Flatpak build there is unproven (it was built in WSL with `build.sh`, not with that action).
-- The exe is signed with our own self-signed certificate (`docs/signing.md`), which Windows does not trust, so SmartScreen may warn.
 - The rulesets are repository settings, not files; they are not in the repository and must be recreated if the repository moves.

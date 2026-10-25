@@ -9,10 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Regenerate codecs from the spec: `dotnet run --project RelicWriter.Generator -- docs/save-spec.xml RelicWriter.Common/Codecs/Generated`
 - Update the spec for a game build: `dotnet run --project RelicWriter.Extractor -- --game <game dir> --saves <saves dir> --previous docs/save-spec.xml --out <dir>`
 - New game data migration: `dotnet run --project RelicWriter.Extractor -- gamedata --game <game dir> --out Database --saves <saves dir>` (`--game-version <x.y>` on Linux), then rebuild (see `docs/game-database.md`)
-- Windows (one self-contained single-file trimmed ReadyToRun exe without pdbs, no installer): `packaging/windows/build.sh`, see `docs/windows.md`
+- Installer (WiX 6 MSI, per user, self-contained trimmed app; not in the solution build): `dotnet build RelicWriter.Installer -c Release`, see `docs/installer.md`
 - Flatpak (Linux, self-contained linux-x64 trimmed ReadyToRun): `packaging/flatpak/build.sh`, see `docs/flatpak.md`
 - Icons: `RelicWriter/Assets/Icon.svg` is the master; `powershell -File packaging/icons/make-icons.ps1` (needs Chrome or Edge) or `packaging/icons/make-icons.sh` (Chrome, Chromium, Edge or rsvg-convert, and python3) renders `Icon.ico`, `Icon.png` and the Linux sizes in `packaging/flatpak/icons/` from it
-- CI and releases: `master` is protected by rulesets (pull requests only, the Build checks must pass, only the owner and maintainers merge); `.github/workflows/build.yml` checks pull requests and `release.yml` (starts when a pull request that changes the version in `version.json` is merged, e.g. from `release/1.0.0` prepared with `packaging/bump-version.ps1` or `.sh`, or all of it with `packaging/release.ps1 <version>` or `.sh`; owner and maintainers only) publishes the MSI, Flatpak and `version.json`; see `docs/releasing.md`
+- CI and releases: `master` is protected by rulesets (pull requests only, the Build checks must pass, only the owner and maintainers merge); `.github/workflows/build.yml` checks pull requests and `release.yml` (starts when a pull request that changes the version in `version.json` is merged, e.g. from `release/1.0.0` prepared with `packaging/bump-version.ps1` or `.sh`, or all of it with `packaging/release.ps1 <version>` or `.sh`; owner and maintainers only) publishes the MSI and the Flatpak; see `docs/releasing.md`
 - Tests: `dotnet test RelicWriter.Tests`. No linting is set up.
 
 ## Architecture

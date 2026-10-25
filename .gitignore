@@ -456,7 +456,6 @@ $RECYCLE.BIN/
 
 # Flatpak build output
 packaging/flatpak/publish/
-packaging/windows/publish/
 packaging/flatpak/build-dir/
 packaging/flatpak/repo/
 packaging/flatpak/.flatpak-builder/
