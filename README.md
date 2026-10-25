@@ -37,13 +37,18 @@ If you do not want to use AI-assisted software, this project is not for you, and
 | Vehicles | Garage, with tile pictures cut from your own game install |
 | Save Info | Header and version details |
 | Nodes | The raw node tree of the save |
+| About | Version, credits and what's new |
 
 Saves from observed save versions 193 to 277 are supported.
 
 ## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- Windows or Linux. Vehicle pictures need Windows and an installed copy of the game.
+- Windows or Linux. Vehicle pictures need an installed copy of the game.
+
+## Verifying a download
+
+Each release file has a `.sigstore.json` signature made by the Release workflow. To check one, install [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) and see `docs/signing.md`. The Windows exe is also signed with our own self-signed certificate, which Windows does not trust by default.
 
 ## Build and run
 

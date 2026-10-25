@@ -24,7 +24,7 @@ Save versions 193 to 277 (the game's release up to patch 2.5). Anything the edit
 
 [size=5][b]Install[/b][/size]
 [list]
-[*][b]Windows 10/11[/b]: run the .msi from the Files tab. It installs for your user only and never asks for administrator rights. It includes everything it needs; there is nothing else to install.
+[*][b]Windows 10/11[/b]: download the .zip from the Files tab, unzip it anywhere and run RelicWriter.exe. It is a single self-contained file; there is nothing to install and it needs no administrator rights.
 [*][b]Linux (beta)[/b]: install the .flatpak from the Files tab. This package is a beta: it builds and starts, but it has had little testing, so please report any problems.
 [/list]
 Then open [b]sav.dat[/b] from your saves folder (Saved Games\CD Projekt Red\Cyberpunk 2077\<save name> on Windows). The editor lists the saves it finds. The first time you save, it keeps a backup of the original file next to it.
@@ -42,8 +42,8 @@ Then open [b]sav.dat[/b] from your saves folder (Saved Games\CD Projekt Red\Cybe
 [*]The perk tree layout is worked out from the perk names, not copied from the game, so some perks may sit in a different place than in the game. Perks have no icons yet.
 [*]Vehicle pictures are read from your own game files, and that works on Windows only. If the game is not found, use the GAME FOLDER button.
 [*]The Linux version is a beta.
-[*]The built-in update check is not tested yet. Check this page or the GitHub releases for new versions for now.
-[*]The Windows installer is not signed, so SmartScreen may warn you.
+[*]There is no built-in update check. Check this page or the GitHub releases for new versions.
+[*]The Windows exe is not signed, so SmartScreen may warn you.
 [/list]
 
 [size=5][b]About the AI in this[/b][/size]
@@ -94,6 +94,6 @@ Libraries: Avalonia, CommunityToolkit.Mvvm, K4os.Compression.LZ4, BCnEncoder.Net
 
 Fonts: Rajdhani (Indian Type Foundry) and Inter (Rasmus Andersson), both under the SIL Open Font License.
 
-Packaging: WiX Toolset, Flatpak and GitHub Actions.
+Packaging: Flatpak and GitHub Actions.
 
 Full list with licenses: https://github.com/hendy643/RelicWriter/blob/master/docs/credits.md

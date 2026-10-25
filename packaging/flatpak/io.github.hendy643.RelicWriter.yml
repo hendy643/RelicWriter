@@ -10,7 +10,6 @@ finish-args:
   - --share=ipc
   - --socket=x11            # Avalonia has no Wayland backend; XWayland serves it
   - --device=dri            # OpenGL
-  - --share=network         # the check for a newer release
   # Where the save files and the game live (read by SaveLocator and GameLocator): Steam, Steam as a Flatpak, Lutris and Heroic.
   - --filesystem=~/.local/share/Steam
   - --filesystem=~/.steam

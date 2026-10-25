@@ -19,6 +19,6 @@ Libraries: Avalonia, CommunityToolkit.Mvvm, K4os.Compression.LZ4, BCnEncoder.Net
 
 Fonts: Rajdhani (Indian Type Foundry) and Inter (Rasmus Andersson), both under the SIL Open Font License.
 
-Packaging: WiX Toolset, Flatpak and GitHub Actions.
+Packaging: Flatpak and GitHub Actions.
 
 Full list with licenses: https://github.com/hendy643/RelicWriter/blob/master/docs/credits.md

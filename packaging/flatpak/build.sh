@@ -7,7 +7,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$here/../..
 app=io.github.hendy643.RelicWriter
 
-# Self-contained linux-x64, trimmed (partial: the .NET libraries only, see docs/installer.md) and ReadyToRun.
+# Self-contained linux-x64, trimmed (partial: the .NET libraries only, see docs/windows.md) and ReadyToRun.
 props="-c Release -r linux-x64 -p:PublishTrimmed=true -p:TrimMode=partial -p:PublishReadyToRun=true -p:InvariantGlobalization=true -p:DebugType=None -p:DebugSymbols=false"
 rm -rf "$here/publish"
 dotnet restore "$root/RelicWriter.Desktop/RelicWriter.Desktop.csproj" -r linux-x64 -p:Configuration=Release -p:PublishTrimmed=true -p:PublishReadyToRun=true
