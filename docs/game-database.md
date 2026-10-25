@@ -27,7 +27,7 @@ Everything the app knows about the game (not about the save format) is in one SQ
 
 **`local_data`** (key, value) holds the user's own values: the game folder (`game_folder`, remembered by `GameLocator.Remember`) and any later settings, read and written through `LocalData`. It exists in the schema migration only; no data migration writes to it (a test checks this), so an update never touches what the user set. It is not part of the in-memory `GameDatabase` snapshot.
 
-**Vehicle pictures are not in the database.** `vehicle.atlas` is the hash of the texture atlas file's path in the game archives and `atlas_part` the part of it. The app cuts the picture out of the player's own install at run time (`GameIcons`, Windows only because the archives need the game's Oodle DLL); without the game the tiles show a drawn glyph.
+**Vehicle pictures are not in the database.** `vehicle.atlas` is the hash of the texture atlas file's path in the game archives and `atlas_part` the part of it. The app cuts the picture out of the player's own install at run time (`GameIcons`; the archives are decompressed with the game's Oodle DLL on Windows and the managed `Kraken` decoder elsewhere); without the game the tiles show a drawn glyph.
 
 ## Making a new migration
 

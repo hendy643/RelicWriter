@@ -9,7 +9,7 @@ RelicWriter is an unofficial fan project. It stands on the work of the people an
 Cyberpunk 2077 and Phantom Liberty are made by [CD PROJEKT RED](https://www.cdprojektred.com/). Cyberpunk 2077 and Phantom Liberty are trademarks of CD PROJEKT S.A. RelicWriter is not affiliated with or endorsed by CD PROJEKT S.A. or CD PROJEKT RED.
 
 - The save format, record names, item, vehicle and perk names, perk costs and perk requirements are the game's own data. The game database in RelicWriter (`Database/*.sql`, `gamedata.db`) holds text and numbers read from the game's files; they belong to CD PROJEKT RED and are not covered by RelicWriter's license.
-- Vehicle pictures are cut at run time from the player's own installed copy of the game (Windows only). Nothing from the game's files is bundled for that.
+- Vehicle pictures are cut at run time from the player's own installed copy of the game. Nothing from the game's files is bundled for that.
 - The archive reader uses the Oodle decompressor that ships with the player's installed game. It is not included in RelicWriter.
 
 ## AI assistants

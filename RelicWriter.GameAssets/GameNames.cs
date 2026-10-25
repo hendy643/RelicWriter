@@ -24,7 +24,7 @@ public sealed class GameNames
     /// <summary>The names in use for the app; set once the game folder is known. Null until then, or when the game files can't be read.</summary>
     public static GameNames? Current { get; set; }
 
-    /// <summary>Reads the TweakDB (base game, then Phantom Liberty) and the English text. Null if the folder isn't a readable install; Windows only for now (see <see cref="Oodle"/>).</summary>
+    /// <summary>Reads the TweakDB (base game, then Phantom Liberty) and the English text. Null if the folder isn't a readable install.</summary>
     public static GameNames? Open(string gameDir)
     {
         try

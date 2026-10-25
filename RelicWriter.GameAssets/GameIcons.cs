@@ -5,7 +5,7 @@ public sealed record GameImage(int Width, int Height, byte[] Rgba);
 
 /// <summary>
 /// Pictures from the player's own game files, found by the atlas and part the game database names for them: the part is cut out of the atlas texture.
-/// Windows only for now (the archives need the game's Oodle DLL, see <see cref="Oodle"/>).
+/// Needs the vehicle atlas to decompress: always on Windows (the game's Oodle DLL), on other systems once <see cref="Kraken"/> covers it (docs/kraken.md).
 /// </summary>
 public sealed class GameIcons
 {

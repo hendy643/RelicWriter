@@ -6,7 +6,7 @@
 
 ## The sandbox
 
-The app can use the display (X11 or XWayland; Avalonia has no Wayland backend), OpenGL and the network (the check for a newer release; on Linux an update is only announced), plus these folders, which `SaveLocator` and `GameLocator` look in: `~/.local/share/Steam`, `~/.steam`, the Steam, Lutris and Heroic Flatpaks' folders, `~/.config/lutris` and `~/.config/heroic` (read only) and `~/Games`. Saves elsewhere are opened through the file chooser portal. The game database lives in the app's own data folder (`~/.var/app/io.github.hendy643.RelicWriter/data/RelicWriter/gamedata.db`).
+The app can use the display (X11 or XWayland; Avalonia has no Wayland backend), OpenGL and the network (the check for a newer release; on Linux an update is only announced), plus these folders, which `SaveLocator` and `GameLocator` look in: `~/.local/share/Steam`, `~/.steam`, the Steam, Lutris and Heroic Flatpaks' folders, `~/.config/lutris` and `~/.config/heroic` (read only) `~/Games`, and the usual mount points of other drives (`/mnt`, `/media`, `/run/media`; read-write, because Steam keeps the saves in the Proton prefix inside the library). A library mounted anywhere else needs `flatpak override --user --filesystem=<dir> io.github.hendy643.RelicWriter`. Saves elsewhere are opened through the file chooser portal. The game database lives in the app's own data folder (`~/.var/app/io.github.hendy643.RelicWriter/data/RelicWriter/gamedata.db`).
 
 ## Icons
 

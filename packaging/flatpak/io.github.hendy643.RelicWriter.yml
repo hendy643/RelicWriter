@@ -19,7 +19,11 @@ finish-args:
   - --filesystem=~/.var/app/com.heroicgameslauncher.hgl
   - --filesystem=~/.config/lutris:ro
   - --filesystem=~/.config/heroic:ro
-  - --filesystem=~/Games
+  - --filesystem=~/Games:rw
+  # Steam libraries on a second drive. Read-write because the Proton prefix with the saves (steamapps/compatdata) sits in the library.
+  - --filesystem=/mnt
+  - --filesystem=/media
+  - --filesystem=/run/media
 
 modules:
   - name: relicwriter

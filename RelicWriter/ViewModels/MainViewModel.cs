@@ -243,15 +243,20 @@ public partial class MainViewModel : ViewModelBase
 /// <summary>Finds the game's save folders.</summary>
 public static class SaveLocator
 {
+    const string SavedGames = "Saved Games";
+
     public static IEnumerable<RecentSave> FindSaves()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        string[] roots =
-        [
-            Path.Combine(home, "Saved Games", "CD Projekt Red", "Cyberpunk 2077"),
-            // Steam with Proton on Linux
-            Path.Combine(home, ".local", "share", "Steam", "steamapps", "compatdata", "1091500", "pfx", "drive_c", "users", "steamuser", "Saved Games", "CD Projekt Red", "Cyberpunk 2077"),
-        ];
+        var roots = new List<string> { Path.Combine(home, SavedGames, "CD Projekt Red", "Cyberpunk 2077") };
+        // On Linux the saves are inside a Wine prefix, under a user name that differs between launchers (steamuser, the login name).
+        if (!OperatingSystem.IsWindows())
+            foreach (var prefix in GameLocator.LinuxWinePrefixes().Distinct())
+            {
+                var users = Path.Combine(prefix, "drive_c", "users");
+                if (Directory.Exists(users))
+                    roots.AddRange(Directory.GetDirectories(users).Select(u => Path.Combine(u, SavedGames, "CD Projekt Red", "Cyberpunk 2077")));
+            }
         return roots.Where(Directory.Exists)
             .SelectMany(Directory.GetDirectories)
             .Select(d => Path.Combine(d, "sav.dat"))

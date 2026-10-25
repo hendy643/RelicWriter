@@ -4,9 +4,9 @@ using System.Runtime.InteropServices;
 namespace RelicWriter.GameAssets;
 
 /// <summary>
-/// Decompression for the game's archives, using the Oodle library that ships with the game (bin/x64/oo2ext_7_win64.dll).
-/// Nothing from Oodle is bundled with RelicWriter. The DLL is a Windows library, so this works on Windows only;
-/// elsewhere <see cref="TryLoad"/> returns false and the compressed archive files cannot be read.
+/// Decompression for the game's archives. On Windows it uses the Oodle library that ships with the game (bin/x64/oo2ext_7_win64.dll);
+/// nothing from Oodle is bundled with RelicWriter. That DLL is a Windows library, so everywhere else (and on Windows when the DLL is
+/// missing) the managed <see cref="Kraken"/> decoder is used.
 /// </summary>
 internal static unsafe class Oodle
 {
@@ -19,14 +19,15 @@ internal static unsafe class Oodle
     {
         if (decompress != 0) return true;
         var path = Path.Combine(gameDir, "bin", "x64", "oo2ext_7_win64.dll");
-        if (!File.Exists(path) || !NativeLibrary.TryLoad(path, out var lib)) return false;
-        return NativeLibrary.TryGetExport(lib, "OodleLZ_Decompress", out decompress);
+        if (OperatingSystem.IsWindows() && File.Exists(path) && NativeLibrary.TryLoad(path, out var lib))
+            NativeLibrary.TryGetExport(lib, "OodleLZ_Decompress", out decompress);
+        return true;
     }
 
     /// <summary>Decompresses exactly <paramref name="dst"/>.Length bytes; false when Oodle reports an error.</summary>
     public static bool Decompress(ReadOnlySpan<byte> src, Span<byte> dst)
     {
-        if (decompress == 0) return false;
+        if (decompress == 0) return Kraken.TryDecompress(src, dst);
         fixed (byte* s = src)
         fixed (byte* d = dst)
         {
