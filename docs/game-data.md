@@ -36,7 +36,7 @@ A `gamedataLocKeyWrapper` value is a u32 primary key followed by a u32 that is 0
 
 Format "RDAR", version 12. Header (40 bytes): magic, version, u64 index position, u32 index size, and more not used. The index has a 28-byte header (u32 values at 16, 20 and 24 are the file, segment and dependency counts), then 56-byte file entries (u64 FNV-1a hash of the lower-case path with backslashes, 8 bytes of time, u32 segment count, u32 first segment index at offset 20, and more), then 16-byte segments (u64 file offset, u32 stored size, u32 real size). The archive stores no file names. A segment whose stored size differs from its real size is `KARK`, the real size, then an Oodle Kraken stream.
 
-Oodle is loaded from the game's own `bin/x64/oo2ext_7_win64.dll` (`OodleLZ_Decompress`). That DLL is a Windows library, so everywhere else the managed `Kraken` decoder is used (`docs/kraken.md`); reading the game files works on Windows and Linux.
+Segments are decompressed with the managed `Kraken` decoder on every system (`docs/kraken.md`); the game's own Oodle DLL is not used.
 
 Only the first segment of a file is read; that is all the on-screen text needs.
 

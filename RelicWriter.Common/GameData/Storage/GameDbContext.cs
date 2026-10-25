@@ -28,6 +28,22 @@ internal sealed class RecordRow
     [Column("display_name")] public string? DisplayName { get; set; }
 }
 
+// An item the player can hold: the in-game name, what it is for the picker's filters, and which optional parts its save node has (an ItemShape).
+[Table("item"), PrimaryKey(nameof(Hash), nameof(Length))]
+internal sealed class ItemRow
+{
+    [Column("hash")] public long Hash { get; set; }
+    [Column("length")] public int Length { get; set; }
+    [Column("name")] public required string Name { get; set; }
+    [Column("category")] public required string Category { get; set; }
+    [Column("type")] public string? Type { get; set; }
+    [Column("quality")] public string? Quality { get; set; }
+    [Column("description")] public string? Description { get; set; }
+    [Column("shape")] public int Shape { get; set; }
+    // 1: the record is only in the Phantom Liberty game files.
+    [Column("expansion")] public int Expansion { get; set; }
+}
+
 [Table("vehicle"), PrimaryKey(nameof(Record))]
 internal sealed class VehicleRow
 {
@@ -80,6 +96,7 @@ internal sealed class GameDbContext(DbContextOptions<GameDbContext> options) : D
     public DbSet<MetaRow> Meta => Set<MetaRow>();
     public DbSet<EnumDefaultRow> EnumDefaults => Set<EnumDefaultRow>();
     public DbSet<RecordRow> Records => Set<RecordRow>();
+    public DbSet<ItemRow> Items => Set<ItemRow>();
     public DbSet<VehicleRow> Vehicles => Set<VehicleRow>();
     public DbSet<PerkTreeRow> PerkTrees => Set<PerkTreeRow>();
     public DbSet<PerkRow> Perks => Set<PerkRow>();

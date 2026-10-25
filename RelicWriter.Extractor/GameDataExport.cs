@@ -12,7 +12,7 @@ using RelicWriter.GameAssets;
 /// </summary>
 static class GameDataExport
 {
-    const string Usage = "Usage: RelicWriter.Extractor gamedata --game <game dir> --out <Database dir> [--saves <saves dir>] [--migrations <folder for the migration classes>]";
+    const string Usage = "Usage: RelicWriter.Extractor gamedata --game <game dir> --out <Database dir> [--saves <saves dir>] [--game-version <version>] [--migrations <folder for the migration classes>]";
     const int RelicMilestoneCost = 3, DefaultCost = 1, OfficialMaxPerkPoints = 82;
     static readonly string[] RelicMilestones = ["Espionage_Central_Milestone_1", "Espionage_Left_Milestone_Perk", "Espionage_Right_Milestone_1"];
     static readonly (string Tree, string AttributeData)[] Trees =
@@ -21,11 +21,70 @@ static class GameDataExport
         ("Intelligence", "IntelligenceAttributeData"), ("Cool", "CoolAttributeData"), (Perks.RelicTree, "EspionageAttributeData"),
     ];
 
+    // The item record types (TweakDB type hashes, found by looking at which types hold named Items.* records and carry in-game text), with the recipe type kept apart.
+    static readonly uint[] ItemTypes = [0x1416443d, 0xb926ec11, 0x7fdef930, 0x1fbcf2d7, 0xff8dad86, 0xe1adebf5, 0x72ddf0c6];
+    const uint RecipeType = 0x1fbcf2d7;
+    const string CategoryPrefix = "ItemCategory.", TypePrefix = "ItemType.", QualityPrefix = "Quality.";
+    static readonly string[] Categories = ["Weapon", "Clothing", "Cyberware", "Consumable", "General", "Gadget", "Part"];
+    static readonly string[] Qualities = ["Random", "Common", "CommonPlus", "Uncommon", "UncommonPlus", "Rare", "RarePlus", "Epic", "EpicPlus", "Legendary", "LegendaryPlus", "LegendaryPlusPlus"];
+    // Item type names guessed from the game's naming (a prefix for the group, then the kind); the game's own list is not in the files, so a type not named here has no type label.
+    static readonly string[] ItemTypeNames = ("Wea_AssaultRifle Wea_Handgun Wea_Shotgun Wea_ShotgunDual Wea_SniperRifle Wea_SubmachineGun Wea_LightMachineGun Wea_HeavyMachineGun Wea_PrecisionRifle Wea_Revolver Wea_Rifle Wea_Melee Wea_Hammer Wea_Katana Wea_Knife Wea_Machete Wea_OneHandedClub Wea_TwoHandedClub Wea_Axe Wea_Fists Wea_Chainsword Wea_LongBlade " +
+        "Clo_Face Clo_Feet Clo_Head Clo_InnerChest Clo_Legs Clo_OuterChest Clo_Outfit Con_Ammo Con_Edible Con_Inhaler Con_Injector Con_LongLasting Con_Skillbook " +
+        "Gen_CraftingMaterial Gen_Jewellery Gen_Junk Gen_Keycard Gen_Misc Gen_MoneyShard Gen_Readable Gen_Tarot Gad_Grenade Prt_FabricEnhancer Prt_Fragment Prt_HandgunMuzzle Prt_LongScope Prt_Mod Prt_Muzzle Prt_PowerMod Prt_Program Prt_ShortScope " +
+        "Cyb_Ability Cyb_Launcher Cyb_MantisBlades Cyb_NanoWires Cyb_StrongArms").Split(' ');
+
+    /// <summary>
+    /// The items a player can hold: the game's records of the item types that have in-game text and an item type link, named by that text. Category, type and quality
+    /// are the names the records' links point at (found by hashing the known names, since TweakDB stores only hashes). The shape of the save node comes from the items
+    /// in the given saves: the shape of the item itself where one was seen, else the most common one for its record type and item type. Items of older runs are kept.
+    /// </summary>
+    static Dictionary<(uint, byte), ItemInfo> BuildItems(GameNames game, string[] saveFiles, GameDatabase? previous)
+    {
+        static (uint, byte) Id(string name) { var id = VehicleId.FromName(name); return (id.Hash, id.Length); }
+        var categories = Categories.ToDictionary(c => Id(CategoryPrefix + c), c => c);
+        var types = ItemTypeNames.ToDictionary(t => Id(TypePrefix + t), t => Spaced(t[(t.IndexOf('_') + 1)..]));
+        var qualities = Qualities.ToDictionary(q => Id(QualityPrefix + q), q => q.Replace("PlusPlus", "++").Replace("Plus", "+"));
+
+        var seen = new Dictionary<(uint, byte), ItemShape>();
+        foreach (var f in saveFiles)
+            if (Inventory.Read(SaveFile.Read(File.ReadAllBytes(f))) is { } inv)
+                foreach (var item in inv.SubInventories.SelectMany(i => i.Items)) seen[(item.RecordHash, item.RecordLength)] = item.Shape;
+
+        var rows = new List<(uint Hash, byte Length, uint RecordType, bool InBase, string Name, string Category, (uint, byte) Type, string? Quality)>();
+        foreach (var (hash, length, recordType, inBase) in game.Records().Where(r => ItemTypes.Contains(r.Type)))
+        {
+            // The game marks retired items "!OBSOLETE".
+            if (game.Name(hash, length) is not { Length: > 0 } name || name.StartsWith('!') || game.LinkOf(hash, length, ".itemType") is not { } type) continue;
+            var category = recordType == RecipeType ? "Recipe" : game.LinkOf(hash, length, ".itemCategory") is { } c && categories.TryGetValue(c, out var label) ? label : "Other";
+            rows.Add((hash, length, recordType, inBase, name, category, type, game.LinkOf(hash, length, ".quality") is { } q && qualities.TryGetValue(q, out var ql) ? ql : null));
+        }
+
+        // The shape an item without a save of its own most likely has: the most common among the seen items of its record type and item type, else of its record type.
+        var observed = rows.Where(r => seen.ContainsKey((r.Hash, r.Length))).ToList();
+        ItemShape? Common(IEnumerable<ItemShape> shapes) => shapes.GroupBy(x => x).OrderByDescending(g => g.Count()).Select(g => (ItemShape?)g.Key).FirstOrDefault();
+        var items = new Dictionary<(uint, byte), ItemInfo>(previous?.Items ?? new Dictionary<(uint, byte), ItemInfo>());
+        foreach (var r in rows)
+        {
+            var shape = seen.TryGetValue((r.Hash, r.Length), out var own) ? own
+                : Common(observed.Where(o => o.RecordType == r.RecordType && o.Type == r.Type).Select(o => seen[(o.Hash, o.Length)]))
+                ?? Common(observed.Where(o => o.RecordType == r.RecordType).Select(o => seen[(o.Hash, o.Length)])) ?? ItemShape.Other;
+            items[(r.Hash, r.Length)] = new ItemInfo(r.Hash, r.Length, r.Name, r.Category, types.GetValueOrDefault(r.Type), r.Quality, shape, !r.InBase, game.DescriptionOf(r.Hash, r.Length));
+        }
+        return items;
+    }
+
+    // "OuterChest" -> "Outer chest"
+    static string Spaced(string name)
+    {
+        var text = System.Text.RegularExpressions.Regex.Replace(name, "([a-z])([A-Z])", "$1 $2").ToLowerInvariant();
+        return char.ToUpperInvariant(text[0]) + text[1..];
+    }
+
     public static int Run(Dictionary<string, string> opt)
     {
         if (!opt.TryGetValue("--game", out var gameDir) || !opt.TryGetValue("--out", out var outDir)) { Console.Error.WriteLine(Usage); return 2; }
         var migrationsDir = opt.GetValueOrDefault("--migrations") ?? Path.Combine(outDir, "..", "RelicWriter.Common", "GameData", "Storage", "Migrations");
-        if (GameNames.Open(gameDir) is not { } game) { Console.Error.WriteLine("Could not read the game files (Windows and the game's Oodle DLL are needed)."); return 1; }
+        if (GameNames.Open(gameDir) is not { } game) { Console.Error.WriteLine("Could not read the game files."); return 1; }
         // The previous data is what the migrations compiled into the Extractor produce (rebuild after every run), so an update only adds a migration and never drops history.
         var existing = Directory.Exists(outDir) ? Directory.GetFiles(outDir, "*.sql").Length : 0;
         if (existing != GameDatabase.ScriptCount) { Console.Error.WriteLine($"{existing} migration scripts in {outDir} but the Extractor was built with {GameDatabase.ScriptCount}: rebuild it first."); return 2; }
@@ -65,15 +124,17 @@ static class GameDataExport
 
         var constants = new Dictionary<string, int>(previous?.Constants ?? new Dictionary<string, int>()) { [GameDatabase.OfficialMaxPerkPoints] = OfficialMaxPerkPoints };
 
-        var maxSave = opt.TryGetValue("--saves", out var savesDir)
-            ? Directory.GetDirectories(savesDir).Select(d => Path.Combine(d, "sav.dat")).Where(File.Exists).Select(f => SaveFile.Read(File.ReadAllBytes(f)).Header.SaveVersion).Append(previous?.Info.MaxSaveVersion ?? 0).Max()
-            : previous?.Info.MaxSaveVersion ?? 0;
+        var saveFiles = opt.TryGetValue("--saves", out var savesDir) ? Directory.GetDirectories(savesDir).Select(d => Path.Combine(d, "sav.dat")).Where(File.Exists).ToArray() : [];
+        var maxSave = saveFiles.Select(f => SaveFile.Read(File.ReadAllBytes(f)).Header.SaveVersion).Append(previous?.Info.MaxSaveVersion ?? 0).Max();
         if (maxSave == 0) { Console.Error.WriteLine("The newest save version is unknown: pass --saves <saves dir> (or --previous)."); return 2; }
 
-        var gameVersion = FileVersionInfo.GetVersionInfo(Path.Combine(gameDir, "bin", "x64", "Cyberpunk2077.exe")).ProductVersion ?? throw new InvalidDataException("The exe has no product version.");
+        // The version resource of a Windows exe can only be read on Windows; elsewhere pass it.
+        var gameVersion = opt.GetValueOrDefault("--game-version") ?? FileVersionInfo.GetVersionInfo(Path.Combine(gameDir, "bin", "x64", "Cyberpunk2077.exe")).ProductVersion
+            ?? throw new InvalidDataException("The exe has no readable product version (not on Windows?): pass --game-version <version>.");
         var info = new DatabaseInfo((previous?.Info.DataVersion ?? 0) + 1, gameVersion, maxSave, DateTime.UtcNow.ToString("yyyy-MM-dd"));
         var tree = Trees.ToDictionary(t => t.Tree, t => t.AttributeData);
-        var db = new GameDatabase(info, enums, records, vehicles, tree, perks, constants);
+        var items = BuildItems(game, saveFiles, previous);
+        var db = new GameDatabase(info, enums, records, vehicles, tree, perks, constants, items);
         if (db.MigrationScript(previous) is not { } script) { Console.WriteLine($"No change from data v{previous!.Info.DataVersion}; no migration written."); return 0; }
         Directory.CreateDirectory(outDir);
         var stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
@@ -93,7 +154,7 @@ static class GameDataExport
         var versionFile = Path.Combine(outDir, "..", "version.json");
         if (File.Exists(versionFile))
             File.WriteAllText(versionFile, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(versionFile), "(\"database\"\\s*:\\s*)\\d+", "${1}" + maxSave));
-        Console.WriteLine($"{migrationId}: save versions up to {maxSave}; now {records.Count} records, {vehicles.Count} vehicles, {perks.Count} perks, {enums.Count} enums. Rebuild to include it.");
+        Console.WriteLine($"{migrationId}: save versions up to {maxSave}; now {records.Count} records, {items.Count} items, {vehicles.Count} vehicles, {perks.Count} perks, {enums.Count} enums. Rebuild to include it.");
         return 0;
     }
 

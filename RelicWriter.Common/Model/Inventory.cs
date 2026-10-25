@@ -3,6 +3,9 @@ using RelicWriter.Common.Container;
 
 namespace RelicWriter.Common.Model;
 
+/// <summary>Which optional parts an item's node has (see docs/save-node-formats.md): a stack has a quantity and a mod tree, "other" only a quantity, gear only a mod tree.</summary>
+public enum ItemShape { Stack, Other, Gear }
+
 /// <summary>One item in an inventory. The record is a TweakDBID (CRC-32 of the record name plus its length); names are not stored in the save.</summary>
 public sealed class ItemEntry
 {
@@ -12,6 +15,7 @@ public sealed class ItemEntry
     public required uint RecordHash { get; init; }
     public required byte RecordLength { get; init; }
     public required uint Seed { get; init; }
+    public ItemShape Shape { get; init; }
 
     /// <summary>The stack size, or null for items that carry no quantity (kind 2: gear with mods).</summary>
     public uint? Quantity { get; set; }
@@ -28,6 +32,10 @@ public sealed class SubInventory
     public required ulong Id { get; init; }
 
     public List<ItemEntry> Items { get; } = [];
+
+    // Where the record's item count is: the index of the inventory's byte segment holding it (-1: unknown) and the offset in it.
+    internal int CountSegment { get; init; }
+    internal int CountOffset { get; init; }
 }
 
 /// <summary>The save's inventory node: sub-inventories of items, with the stack size of items that have one editable.</summary>
@@ -39,6 +47,7 @@ public sealed class Inventory
     public static readonly uint MoneyHash = Crc32("Items.money"u8);
 
     // An item's id: record hash (u32) and length (u8) in 8 bytes, the seed (u32) at 8, then optional parts that depend on the save version.
+    const int RecordLengthOffset = 4;
     const int SeedOffset = 8, IdBaseSize = 12, KindByteOffset = 12, KindByteSize = 1, ExtraBytesSize = 2, TrailingByteSize = 1;
     /// <summary>After the item id come a flags byte and an unknown u32; the quantity follows.</summary>
     const int FlagsByteSize = 1;
@@ -50,25 +59,42 @@ public sealed class Inventory
     // A sub-inventory record: u64 id, u32 item count.
     const int SubInventoryCountOffset = sizeof(ulong), SubInventorySize = sizeof(ulong) + sizeof(uint);
 
+    /// <summary>The sub-inventory id of V's bag, where <see cref="Add"/> puts items.</summary>
+    public const ulong BagId = 1;
+
+    readonly SaveFile file;
+    readonly SaveNode node;
+    readonly int idSize;
+
+    Inventory(SaveFile file, SaveNode node)
+    {
+        this.file = file;
+        this.node = node;
+        var v = file.Header.SaveVersion;
+        idSize = IdBaseSize + (v >= SaveVersions.ItemKindByte ? KindByteSize : 0) + (v >= SaveVersions.ItemExtraBytes ? ExtraBytesSize : 0) + (v >= SaveVersions.ItemTrailingByte ? TrailingByteSize : 0);
+    }
+
     public List<SubInventory> SubInventories { get; } = [];
 
     public ItemEntry? Money => SubInventories.SelectMany(s => s.Items).FirstOrDefault(i => i.IsMoney);
 
     public static Inventory? Read(SaveFile file)
     {
-        var node = file.Walk().FirstOrDefault(n => n.Name == "inventory");
-        if (node is null) return null;
-        var v = file.Header.SaveVersion;
-        var idSize = IdBaseSize + (v >= SaveVersions.ItemKindByte ? KindByteSize : 0) + (v >= SaveVersions.ItemExtraBytes ? ExtraBytesSize : 0) + (v >= SaveVersions.ItemTrailingByte ? TrailingByteSize : 0);
-        var items = node.Children.Where(c => c.Name == "itemData").Select(c => ReadItem(c, v, idSize)).ToList();
+        if (file.Walk().FirstOrDefault(n => n.Name == "inventory") is not { } node) return null;
+        var inventory = new Inventory(file, node);
+        inventory.Parse();
+        return inventory;
+    }
 
-        var inventory = new Inventory();
+    void Parse()
+    {
+        var v = file.Header.SaveVersion;
+        var items = node.Children.Where(c => c.Name == "itemData").Select(c => ReadItem(c, v, idSize)).ToList();
+        SubInventories.Clear();
         try
         {
             // Sub-inventory records and item id headers sit in the inventory's own bytes, in the gaps after each child and in the trailing bytes.
-            var segments = new List<byte[]> { node.Data };
-            segments.AddRange(node.Children.Take(node.Children.Count - 1).Select(c => c.After));
-            segments.Add(node.Trailing); // sub-inventory records that come after the last item
+            var segments = Segments();
             var seg = 0;
             var pos = 0;
             var next = 0;
@@ -76,8 +102,8 @@ public sealed class Inventory
             pos = sizeof(uint);
             for (var s = 0; s < subCount; s++)
             {
-                var sub = new SubInventory { Id = BinaryPrimitives.ReadUInt64LittleEndian(segments[seg].AsSpan(pos)) };
-                var count = (int)BinaryPrimitives.ReadUInt32LittleEndian(segments[seg].AsSpan(pos + SubInventoryCountOffset));
+                var sub = new SubInventory { Id = BinaryPrimitives.ReadUInt64LittleEndian(segments[seg].AsSpan(pos)), CountSegment = seg, CountOffset = pos + SubInventoryCountOffset };
+                var count = (int)BinaryPrimitives.ReadUInt32LittleEndian(segments[seg].AsSpan(sub.CountOffset));
                 pos += SubInventorySize;
                 for (var i = 0; i < count; i++)
                 {
@@ -85,19 +111,61 @@ public sealed class Inventory
                     seg++;
                     pos = 0;
                 }
-                inventory.SubInventories.Add(sub);
+                SubInventories.Add(sub);
             }
             if (next != items.Count) throw new InvalidDataException("Item counts do not add up.");
         }
         catch (Exception e) when (e is InvalidDataException or ArgumentOutOfRangeException or IndexOutOfRangeException)
         {
-            // shortcut: if the sub-inventory records do not parse, all items are shown in one group with id 0.
-            inventory.SubInventories.Clear();
-            var all = new SubInventory { Id = 0 };
+            // shortcut: if the sub-inventory records do not parse, all items are shown in one group with id 0 and nothing can be added.
+            SubInventories.Clear();
+            var all = new SubInventory { Id = 0, CountSegment = -1 };
             all.Items.AddRange(items);
-            inventory.SubInventories.Add(all);
+            SubInventories.Add(all);
         }
-        return inventory;
+    }
+
+    // The inventory's own bytes in file order: the data, the gap after every child but the last, then the trailing bytes (sub-inventory records after the last item).
+    List<byte[]> Segments() => [node.Data, .. node.Children.Take(node.Children.Count - 1).Select(c => c.After), node.Trailing];
+
+    /// <summary>
+    /// Puts a new item in V's bag by copying the plainest item of the same shape already in the save (a node with an empty mod tree), then giving the copy the new
+    /// record. The sub-inventory count, the item id header in front of the copy and the node numbering are kept in step, and the inventory is read again, so
+    /// entries obtained before the call must be dropped. Quantity edits made so far are kept. Returns null when the save cannot take it: no bag, or no item
+    /// of that shape to copy from. Not checked in the game itself.
+    /// </summary>
+    public ItemEntry? Add(uint hash, byte length, ItemShape shape, uint quantity)
+    {
+        var bag = SubInventories.FirstOrDefault(s => s.Id == BagId);
+        if (bag is null || bag.CountSegment < 0 || bag.Items.Count == 0) return null;
+        var template = SubInventories.SelectMany(s => s.Items).Where(i => i.Shape == shape && !i.IsMoney).MinBy(i => i.Node.Data.Length);
+        if (template is null) return null;
+        ApplyTo();
+
+        var data = (byte[])template.Node.Data.Clone();
+        BinaryPrimitives.WriteUInt32LittleEndian(data, hash);
+        data[RecordLengthOffset] = length;
+        if (shape == ItemShape.Gear) BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(SeedOffset), (uint)Random.Shared.NextInt64(SeedOfOtherKind + 1, uint.MaxValue));
+        if (shape != ItemShape.Gear) BinaryPrimitives.WriteUInt32LittleEndian(data.AsSpan(idSize + FlagsByteSize + sizeof(uint)), quantity);
+        var added = new SaveNode { Name = template.Node.Name, Data = data };
+
+        // Node ids are the nodes' positions in the file (true in every save checked); keep it that way.
+        var sequential = file.Walk().Select((n, i) => n.Id == (uint)i).All(x => x);
+        var segments = Segments();
+        var count = segments[bag.CountSegment].AsSpan(bag.CountOffset);
+        BinaryPrimitives.WriteUInt32LittleEndian(count, BinaryPrimitives.ReadUInt32LittleEndian(count) + 1);
+
+        // The node goes after the bag's last item; that item's gap (the next sub-inventory record and the next item's id header) moves behind it, and the gap now holds the new item's header.
+        var last = bag.Items[^1].Node;
+        added.After = last.After;
+        last.After = data[..idSize];
+        node.Children.Insert(node.Children.IndexOf(last) + 1, added);
+
+        if (sequential) foreach (var (n, i) in file.Walk().Select((n, i) => (n, i))) n.Id = (uint)i;
+        else added.Id = file.Walk().Max(n => n.Id) + 1;
+
+        Parse();
+        return SubInventories.First(s => s.Id == BagId).Items.First(i => i.Node == added);
     }
 
     public void ApplyTo()
@@ -120,6 +188,7 @@ public sealed class Inventory
             RecordHash = BinaryPrimitives.ReadUInt32LittleEndian(d),
             RecordLength = d[4],
             Seed = seed,
+            Shape = kind switch { KindStack => ItemShape.Stack, KindOther => ItemShape.Other, _ => ItemShape.Gear },
             Quantity = kind != KindGear ? BinaryPrimitives.ReadUInt32LittleEndian(d.AsSpan(qty)) : null,
             QuantityOffset = kind != KindGear ? qty : NoQuantity,
         };

@@ -23,6 +23,21 @@ public sealed record DatabaseInfo(int DataVersion, string GameVersion, uint MaxS
 
 public sealed record RecordEntry(string Name, string? DisplayName);
 
+/// <summary>An item the player can hold. <paramref name="Name"/> is the in-game name; category, type and quality are the labels the item picker filters by.</summary>
+public sealed record ItemInfo(uint Hash, byte Length, string Name, string Category, string? Type, string? Quality, ItemShape Shape, bool Expansion, string? Description = null)
+{
+    /// <summary>Quality and type in one line, such as "Rare+ Handgun"; this is what tells apart the items of one name.</summary>
+    public string Kind => string.Join(' ', new[] { Quality, Type ?? Category }.OfType<string>());
+
+    public string Source => Expansion ? "Phantom Liberty" : "Base game";
+
+    /// <summary>The description with the line breaks the game text writes as \n.</summary>
+    public string? DescriptionText => Description?.Replace("\\n", "\n");
+
+    /// <summary>The record's name where the database has one (for example "Items.Preset_Katana_Default"), else its id; this is the exact version of the item.</summary>
+    public string RecordId => GameDatabase.Current.Record(Hash, Length)?.Name ?? $"{Hash:x8}/{Length}";
+}
+
 /// <summary>A vehicle and where the game keeps its picture: the hash of the texture atlas file's path and the part of the atlas. The picture itself is read from the player's game files.</summary>
 public sealed record VehicleEntry(string Record, ulong? Atlas, string? AtlasPart);
 
@@ -74,8 +89,10 @@ public sealed class GameDatabase
     }
 
     internal GameDatabase(DatabaseInfo info, IReadOnlyDictionary<string, string> enums, IReadOnlyDictionary<(uint Hash, byte Length), RecordEntry> records,
-        IReadOnlyList<VehicleEntry> vehicles, IReadOnlyDictionary<string, string> perkTrees, IReadOnlyList<PerkInfo> perks, IReadOnlyDictionary<string, int> constants)
+        IReadOnlyList<VehicleEntry> vehicles, IReadOnlyDictionary<string, string> perkTrees, IReadOnlyList<PerkInfo> perks, IReadOnlyDictionary<string, int> constants,
+        IReadOnlyDictionary<(uint Hash, byte Length), ItemInfo> items)
     {
+        Items = items;
         Info = info;
         Enums = enums;
         Records = records;
@@ -92,6 +109,11 @@ public sealed class GameDatabase
     internal IReadOnlyDictionary<(uint Hash, byte Length), RecordEntry> Records { get; }
 
     public IReadOnlyList<VehicleEntry> Vehicles { get; }
+
+    /// <summary>Every item the player can hold, from the game's item records that have an in-game name (see docs/game-database.md).</summary>
+    public IReadOnlyDictionary<(uint Hash, byte Length), ItemInfo> Items { get; }
+
+    public ItemInfo? Item(uint hash, byte length) => Items.GetValueOrDefault((hash, length));
 
     /// <summary>Tree name to the name the save gives its attribute data, in the game's order.</summary>
     public IReadOnlyDictionary<string, string> PerkTrees { get; }
@@ -163,7 +185,8 @@ public sealed class GameDatabase
             db.Vehicles.AsNoTracking().OrderBy(v => v.Sort).AsEnumerable().Select(v => new VehicleEntry(v.Record, v.Atlas is { } atlas ? unchecked((ulong)atlas) : null, v.AtlasPart)).ToList(),
             db.PerkTrees.AsNoTracking().OrderBy(t => t.Sort).ToDictionary(t => t.Name, t => t.AttributeData),
             db.Perks.AsNoTracking().OrderBy(p => p.Sort).AsEnumerable().Select(p => new PerkInfo(p.Id, p.Tree, p.MaxLevel, p.CostPerLevel, p.DisplayName, p.Requires, p.AttributePoints)).ToList(),
-            db.Constants.AsNoTracking().ToDictionary(c => c.Name, c => c.Value));
+            db.Constants.AsNoTracking().ToDictionary(c => c.Name, c => c.Value),
+            db.Items.AsNoTracking().AsEnumerable().Select(i => new ItemInfo((uint)i.Hash, (byte)i.Length, i.Name, i.Category, i.Type, i.Quality, (ItemShape)i.Shape, i.Expansion != 0, i.Description)).ToDictionary(i => (i.Hash, i.Length)));
     }
 
     /// <summary>
@@ -178,6 +201,8 @@ public sealed class GameDatabase
             .Select(e => $"INSERT OR REPLACE INTO enum_default (type, value) VALUES ({Q(e.Key)}, {Q(e.Value)});"));
         s.AddRange(Records.Where(r => previous?.Records.GetValueOrDefault(r.Key) != r.Value).OrderBy(r => r.Value.Name, StringComparer.Ordinal)
             .Select(r => $"INSERT OR REPLACE INTO record (hash, length, name, display_name) VALUES ({r.Key.Hash}, {r.Key.Length}, {Q(r.Value.Name)}, {Q(r.Value.DisplayName)});"));
+        s.AddRange(Items.Where(i => previous?.Items.GetValueOrDefault(i.Key) != i.Value).OrderBy(i => i.Value.Name, StringComparer.Ordinal).ThenBy(i => i.Key)
+            .Select(i => $"INSERT OR REPLACE INTO item (hash, length, name, category, type, quality, description, shape, expansion) VALUES ({i.Key.Hash}, {i.Key.Length}, {Q(i.Value.Name)}, {Q(i.Value.Category)}, {Q(i.Value.Type)}, {Q(i.Value.Quality)}, {Q(i.Value.Description)}, {(int)i.Value.Shape}, {(i.Value.Expansion ? 1 : 0)});"));
         var oldVehicles = previous?.Vehicles.Select((v, i) => (v, i)).ToDictionary(p => p.v.Record) ?? [];
         s.AddRange(Vehicles.Select((v, i) => (v, i)).Where(p => !oldVehicles.TryGetValue(p.v.Record, out var o) || o.i != p.i || o.v != p.v)
             .Select(p => $"INSERT OR REPLACE INTO vehicle (record, sort, atlas, atlas_part) VALUES ({Q(p.v.Record)}, {p.i}, {(p.v.Atlas is { } atlas ? unchecked((long)atlas).ToString() : "NULL")}, {Q(p.v.AtlasPart)});"));

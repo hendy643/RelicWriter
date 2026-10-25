@@ -65,6 +65,20 @@ public class GameDatabaseTests : IDisposable
     }
 
     [Fact]
+    public void BuiltInDataHasTheItemCatalogue()
+    {
+        var items = GameDatabase.BuiltIn().Items.Values.ToList();
+        Assert.True(items.Count > 5000);
+        Assert.DoesNotContain(items, i => i.Name.StartsWith('!'));
+        Assert.Contains(items, i => i is { Name: "Katana", Category: "Weapon", Shape: ItemShape.Gear });
+        Assert.Contains(items, i => i.Expansion);
+        Assert.Contains(items, i => i.Description is not null);
+        Assert.DoesNotContain(items, i => i.DescriptionText?.Contains("\\n") == true);
+        // A stack item the picker can add: its shape has a quantity.
+        Assert.Contains(items, i => i is { Category: "Consumable" } && i.Shape != ItemShape.Gear);
+    }
+
+    [Fact]
     public void TheDatabaseFileIsCreatedOnFirstStartAndLoadedAfterwards()
     {
         Assert.False(File.Exists(DbPath()));
@@ -115,7 +129,7 @@ public class GameDatabaseTests : IDisposable
 
         var perk = before.Perks[0] with { DisplayName = "Renamed" };
         var records = new Dictionary<(uint, byte), RecordEntry>(before.Records) { [(1, 1)] = new RecordEntry("Items.NewThing", "New Thing") };
-        var after = new GameDatabase(before.Info, before.Enums, records, before.Vehicles, before.PerkTrees, before.Perks.Select(p => p.Id == perk.Id ? perk : p).ToList(), before.Constants);
+        var after = new GameDatabase(before.Info, before.Enums, records, before.Vehicles, before.PerkTrees, before.Perks.Select(p => p.Id == perk.Id ? perk : p).ToList(), before.Constants, before.Items);
         var script = after.MigrationScript(before)!;
         Assert.Contains("Items.NewThing", script);
         Assert.Contains("Renamed", script);
@@ -162,7 +176,7 @@ public class GameDatabaseTests : IDisposable
 
     [Fact]
     public void TheDatabaseVersionInVersionJsonIsTheSaveVersionTheBuiltInDataCovers() =>
-        Assert.Equal(GameDatabase.BuiltIn().Info.MaxSaveVersion, RelicWriter.Common.Updates.AppVersion.DatabaseVersion);
+        Assert.Equal(GameDatabase.BuiltIn().Info.MaxSaveVersion, RelicWriter.Common.AppInfo.AppVersion.DatabaseVersion);
 
     [Fact]
     public void SavesNewerThanTheDataAreFlagged()
