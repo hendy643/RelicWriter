@@ -17,6 +17,14 @@ public sealed record SaveHeader(uint SaveVersion, uint GameVersion, uint Archive
     const uint FirstPatchNumberedVersion = 1000;
     const uint MajorDivisor = 1000, MinorDivisor = 10;
 
+    /// <summary>The same header with another game version, in the number and in the bytes the writer copies. The save version is left alone.</summary>
+    public SaveHeader WithGameVersion(uint gameVersion)
+    {
+        var prefix = (byte[])Prefix.Clone();
+        BitConverter.GetBytes(gameVersion).CopyTo(prefix, SaveLayout.GameVersionOffset);
+        return this with { GameVersion = gameVersion, Prefix = prefix };
+    }
+
     /// <summary>When the save was written (local time as the game stored it), from the packed clock and date.</summary>
     public DateTime? Timestamp
     {

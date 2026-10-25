@@ -8,8 +8,6 @@ namespace RelicWriter.ViewModels;
 
 public partial class AttributeViewModel : ViewModelBase
 {
-    public const int Min = 3, Max = 20;
-
     static readonly Dictionary<string, string> Titles = new()
     {
         ["Strength"] = "BODY", ["Reflexes"] = "REFLEXES", ["TechnicalAbility"] = "TECHNICAL ABILITY", ["Intelligence"] = "INTELLIGENCE", ["Cool"] = "COOL",
@@ -22,8 +20,14 @@ public partial class AttributeViewModel : ViewModelBase
     {
         this.entry = entry;
         Value = entry.Value;
+        // A save can hold a value below the normal minimum (an attribute reset to 1); the slider must not pull it up on load.
+        Minimum = Math.Min(GameEdition.MinAttribute, entry.Value);
         this.changed = changed;
     }
+
+    public int Minimum { get; }
+
+    public int Maximum => GameEdition.MaxAttribute;
 
     public string Stat => entry.Stat;
 
@@ -40,8 +44,6 @@ public partial class AttributeViewModel : ViewModelBase
 
 public partial class SkillViewModel : ViewModelBase
 {
-    public const int Min = 1, Max = 60;
-
     readonly ProficiencyEntry entry;
     Action? changed;
 
@@ -49,14 +51,24 @@ public partial class SkillViewModel : ViewModelBase
     {
         this.entry = entry;
         Value = entry.Level;
+        loadedLevel = entry.Level;
         this.changed = changed;
     }
 
+    readonly int loadedLevel;
+
+    public string Type => entry.Type;
+
+    /// <summary>The cap of this skill at its patch, or the level the save already has if that is higher (so loading never changes it).</summary>
+    public int Maximum => Math.Max(GameEdition.MaxSkillLevel(entry.Type), loadedLevel);
+
     // Names as the game's skill screen shows them (from memory, not read from the game files); "Espionage" is the Phantom Liberty Relic skill.
+    // The five 2.0 skills are named in CD PROJEKT RED's Update 2.0 notes; pairing each with its attribute's proficiency is from the attribute they belong to.
     static readonly Dictionary<string, string> Titles = new()
     {
         ["Brawling"] = "STREET BRAWLER", ["Gunslinger"] = "HANDGUNS", ["Kenjutsu"] = "BLADES", ["CombatHacking"] = "BREACH PROTOCOL", ["Hacking"] = "QUICKHACKING",
         ["Demolition"] = "ANNIHILATION", ["Espionage"] = "RELIC",
+        ["StrengthSkill"] = "SOLO", ["ReflexesSkill"] = "SHINOBI", ["TechnicalAbilitySkill"] = "ENGINEER", ["IntelligenceSkill"] = "NETRUNNER", ["CoolSkill"] = "HEADHUNTER",
     };
 
     /// <summary>The in-game skill name where known, else the internal proficiency name split into words.</summary>
@@ -74,14 +86,19 @@ public partial class SkillViewModel : ViewModelBase
 /// <summary>The character screen: level, street cred, life path, attributes, skills and unspent points.</summary>
 public partial class CharacterViewModel : ViewModelBase
 {
-    public const int MaxLevel = 60, MaxStreetCred = 50, MaxPoints = 999;
+    public const int MaxPoints = 999;
+
+    readonly EditionViewModel edition;
+    readonly int loadedLevel;
+    readonly List<SkillViewModel> allSkills;
 
     readonly DevelopmentPointsEntry? attributePoints, perkPoints, relicPoints;
     readonly ProficiencyEntry? level, streetCred;
     Action? changed;
 
-    public CharacterViewModel(PlayerDevelopment dev, Action changed)
+    public CharacterViewModel(PlayerDevelopment dev, Action changed, EditionViewModel edition)
     {
+        this.edition = edition;
         level = dev.Level;
         streetCred = dev.StreetCred;
         attributePoints = dev.Points.FirstOrDefault(p => p.Type == "Secondary");
@@ -94,9 +111,32 @@ public partial class CharacterViewModel : ViewModelBase
         PerkPoints = perkPoints?.Unspent;
         RelicPoints = relicPoints?.Unspent;
         Attributes = new ObservableCollection<AttributeViewModel>(dev.Attributes.Select(a => new AttributeViewModel(a, changed)));
-        Skills = new ObservableCollection<SkillViewModel>(dev.Skills.OrderBy(s => s.Type).Select(s => new SkillViewModel(s, changed)));
+        allSkills = dev.Skills.OrderBy(s => s.Type).Select(s => new SkillViewModel(s, changed)).ToList();
+        Skills = new ObservableCollection<SkillViewModel>();
+        loadedLevel = level?.Level ?? 0;
+        RefreshSkills();
         this.changed = changed;
+        edition.PropertyChanged += (_, _) =>
+        {
+            RefreshSkills();
+            OnPropertyChanged(nameof(MaxLevel));
+            OnPropertyChanged(nameof(CanEditRelicPoints));
+        };
     }
+
+    /// <summary>Only the skills that exist at the chosen patch are shown (the old ones before 2.0, the new ones after, the Relic skill with the expansion).</summary>
+    void RefreshSkills()
+    {
+        var wanted = allSkills.Where(s => edition.Edition.HasSkill(s.Type)).ToList();
+        if (wanted.SequenceEqual(Skills)) return;
+        Skills.Clear();
+        foreach (var skill in wanted) Skills.Add(skill);
+    }
+
+    /// <summary>The level cap of the chosen patch, or the save's own level if that is higher, so loading never changes it.</summary>
+    public int MaxLevel => Math.Max(edition.Edition.MaxLevel, loadedLevel);
+
+    public int MaxStreetCred => GameEdition.MaxStreetCred;
 
     public string LifePath { get; }
 
@@ -108,7 +148,7 @@ public partial class CharacterViewModel : ViewModelBase
     public bool CanEditStreetCred => streetCred is not null;
     public bool CanEditAttributePoints => attributePoints is not null;
     public bool CanEditPerkPoints => perkPoints is not null;
-    public bool CanEditRelicPoints => relicPoints is not null;
+    public bool CanEditRelicPoints => relicPoints is not null && edition.Edition.HasPhantomLiberty;
 
     [ObservableProperty] public partial decimal? Level { get; set; }
     [ObservableProperty] public partial decimal? StreetCred { get; set; }

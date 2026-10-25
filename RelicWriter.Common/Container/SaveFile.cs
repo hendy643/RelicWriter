@@ -3,7 +3,7 @@ namespace RelicWriter.Common.Container;
 /// <summary>Version-independent, lossless view of a sav.dat: header fields plus the raw node tree.</summary>
 public sealed class SaveFile
 {
-    public required SaveHeader Header { get; init; }
+    public required SaveHeader Header { get; set; }
 
     /// <summary>Top-level nodes in file order.</summary>
     public List<SaveNode> Roots { get; } = [];

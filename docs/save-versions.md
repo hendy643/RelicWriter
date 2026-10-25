@@ -8,7 +8,13 @@ The container layout is described in [save-format.md](save-format.md).
 | Save version | Game version | Patch (`buildPatch`) | Chunk table capacity | Nodes in sample | Status |
 |---|---|---|---|---|---|
 | 193 | 8 | 1.04 | 256 | 366 | container verified |
+| 197 | 1210, 1220 | 1.21, 1.22 | | | parsed, node trees round-trip (see [game-versions.md](game-versions.md)) |
+| 220 | 1500 | 1.5 | | | same |
+| 224 | 1600, 1610, 1630 | 1.6, 1.61, 1.63 | | | same |
+| 254 | 2000 | 2.0 | | | same |
 | 261 | 2100 | 2.1 | 256 | 593 | container verified |
+| 263 | 2120 | 2.12 | | | parsed, node trees round-trip |
+| 265 | 2210 | 2.21 | | | same |
 | 269 | 2310 | 2.31 | 512 | 574 | container verified |
 | 277 | 2500 | 2.5 | 512 | 207 to 224 | container verified |
 
