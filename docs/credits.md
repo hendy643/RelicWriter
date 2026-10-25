@@ -10,7 +10,7 @@ Cyberpunk 2077 and Phantom Liberty are made by [CD PROJEKT RED](https://www.cdpr
 
 - The save format, record names, item, vehicle and perk names, perk costs and perk requirements are the game's own data. The game database in RelicWriter (`Database/*.sql`, `gamedata.db`) holds text and numbers read from the game's files; they belong to CD PROJEKT RED and are not covered by RelicWriter's license.
 - Vehicle pictures are cut at run time from the player's own installed copy of the game. Nothing from the game's files is bundled for that.
-- The archive reader uses the Oodle decompressor that ships with the player's installed game. It is not included in RelicWriter.
+- The archive reader decompresses the game's Oodle (Kraken) data with its own managed decoder (`docs/kraken.md`); no Oodle code or library is used or included.
 
 ## AI assistants
 
@@ -49,7 +49,6 @@ Facts about the save format were learned from these projects and checked against
 
 ## Packaging and build
 
-- [WiX Toolset](https://wixtoolset.org/) builds the Windows installer.
 - [Flatpak](https://flatpak.org/), [flatpak-builder](https://github.com/flatpak/flatpak-builder) and the freedesktop runtime build the Linux package.
 - GitHub Actions and the actions `actions/checkout`, `actions/setup-dotnet`, `actions/upload-artifact`, `actions/download-artifact`, `flatpak/flatpak-github-actions` and `softprops/action-gh-release` run the builds and releases.
 - [.NET](https://dotnet.microsoft.com/) by Microsoft.

@@ -54,7 +54,7 @@ public sealed class GameArchive(string path)
         // Compressed: "KARK", the real size, then an Oodle (Kraken) stream.
         if (BinaryPrimitives.ReadUInt32LittleEndian(data) != CompressedMagic) return null;
         var raw = new byte[size];
-        return Oodle.Decompress(data.AsSpan(CompressedHeaderSize), raw) ? raw : null;
+        return Kraken.TryDecompress(data.AsSpan(CompressedHeaderSize), raw) ? raw : null;
     }
 
     int FileCount => (int)BinaryPrimitives.ReadUInt32LittleEndian(index.AsSpan(FileCountOffset));

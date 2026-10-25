@@ -29,7 +29,6 @@ public sealed class GameNames
     {
         try
         {
-            if (!Oodle.TryLoad(gameDir)) return null;
             var cache = Path.Combine(gameDir, "r6", "cache");
             var db = TweakDb.Open(new[] { "tweakdb.bin", "tweakdb_ep1.bin" }.Select(f => Path.Combine(cache, f)).Where(File.Exists));
             if (db is null) return null;
@@ -53,6 +52,16 @@ public sealed class GameNames
 
     /// <summary>The in-game name of a record such as an item or vehicle, or null when the game files have none.</summary>
     public string? Name(uint hash, byte length) => Text(TweakDb.Append(TweakDb.Id(hash, length), ".displayName"));
+
+    /// <summary>The in-game description of a record such as an item (its localizedDescription), or null when the game files have none.</summary>
+    public string? DescriptionOf(uint hash, byte length) => Text(TweakDb.Append(TweakDb.Id(hash, length), ".localizedDescription"));
+
+    /// <summary>Every record in the TweakDB with the hash of its type; see <see cref="TweakDb.Records"/>.</summary>
+    public IEnumerable<(uint Hash, byte Length, uint Type, bool InBaseGame)> Records() => db.Records();
+
+    /// <summary>The record a link flat of a record points to ("itemType", "itemCategory", ...), as (hash, name length); null when the record has no such flat.</summary>
+    public (uint Hash, byte Length)? LinkOf(uint hash, byte length, string field) =>
+        db.Link(TweakDb.Append(TweakDb.Id(hash, length), field)) is { } id ? ((uint)id, (byte)(id >> 32)) : null;
 
     /// <summary>The in-game name of a perk (a gamedataNewPerkType value such as "Body_Central_Perk_1_1"), or null when the game files have none.</summary>
     public string? PerkName(string perk) => PerkText(perk, ".loc_name_key");
