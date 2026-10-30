@@ -15,6 +15,7 @@
                     <Button Content="GAME FOLDER…" Command="{Binding LocateGameCommand}" IsVisible="{Binding !HasGameIcons}" ToolTip.Tip="Vehicle pictures are read from the game's files. The game was not found; pick its folder." />
                     <TextBlock Classes="dim" Text="{Binding VersionText}" VerticalAlignment="Center" FontSize="12" LetterSpacing="2" />
                     <TextBlock Classes="dim" Text="{Binding GameDataText}" VerticalAlignment="Center" FontSize="12" LetterSpacing="2" ToolTip.Tip="Names and perks come from this database; vehicle pictures are read from the game files." />
+                    <Button Content="REPORT A BUG" Command="{Binding ReportBugCommand}" ToolTip.Tip="Saves a text file of versions and counts (no names, paths or dates) to attach, and opens the issue page on GitHub." />
                     <Button Content="OPEN…" Command="{Binding OpenCommand}" />
                     <Button Content="SAVE AS…" Command="{Binding SaveAsCommand}" />
                     <Button Classes="primary" Content="SAVE" Command="{Binding SaveCommand}" />

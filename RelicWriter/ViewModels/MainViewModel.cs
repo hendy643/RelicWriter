@@ -19,6 +19,10 @@ public interface IFileDialogs
     Task<string?> PickFolderAsync();
 
     Task<string?> PickSaveAsync(string suggestedFileName);
+
+    Task<string?> PickSaveTextAsync(string suggestedFileName);
+
+    Task OpenUrlAsync(string url);
 }
 
 public sealed record RecentSave(string Name, string Path, DateTime Modified)
@@ -82,6 +86,7 @@ public partial class MainViewModel : ViewModelBase
     public string VersionText => "v" + AppVersion.DisplayText;
 
     const int MaxRecentSaves = 12;
+    const string IssuesUrl = "https://github.com/hendy643/RelicWriter/issues";
 
     public MainViewModel()
     {
@@ -111,6 +116,24 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasGameIcons));
         if (IsLoaded && !IsDirty) Load(FilePath!);
         else SetStatus("Game found. Vehicle pictures appear the next time a save is opened.", false);
+    }
+
+    /// <summary>Writes the bug report (versions and counts only, see <see cref="BugReport"/>) where the user chooses, then opens the issue tracker to attach it to.</summary>
+    [RelayCommand]
+    async Task ReportBugAsync()
+    {
+        if (Dialogs is null || await Dialogs.PickSaveTextAsync("relicwriter-bug-report.txt") is not { } path) return;
+        try
+        {
+            await File.WriteAllTextAsync(path, BugReport.Build(file, file is null ? null : Info?.PhantomLiberty));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            SetStatus($"Could not write the bug report: {e.Message}", true);
+            return;
+        }
+        await Dialogs.OpenUrlAsync(IssuesUrl);
+        SetStatus("Bug report written. Describe the problem in the issue that opened and attach that file; it holds versions and counts only.", false);
     }
 
     [RelayCommand]

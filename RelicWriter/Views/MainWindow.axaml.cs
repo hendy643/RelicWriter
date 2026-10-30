@@ -66,4 +66,12 @@ public partial class MainWindow : Window, IFileDialogs
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = "Save as", SuggestedFileName = suggestedFileName, FileTypeChoices = [SaveFiles] });
         return file?.TryGetLocalPath();
     }
+
+    public async Task<string?> PickSaveTextAsync(string suggestedFileName)
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = "Save the bug report", SuggestedFileName = suggestedFileName, DefaultExtension = "txt", FileTypeChoices = [FilePickerFileTypes.TextPlain] });
+        return file?.TryGetLocalPath();
+    }
+
+    public Task OpenUrlAsync(string url) => Launcher.LaunchUriAsync(new Uri(url));
 }
