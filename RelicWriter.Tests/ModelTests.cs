@@ -89,6 +89,34 @@ public class ModelTests
         Assert.Equal(VehicleId.FromName("Items.FirstAidWhiffV0").Hash, again.SubInventories[1].Items[0].RecordHash);
     }
 
+    [Theory, MemberData(nameof(SyntheticSave.AllVersions), MemberType = typeof(SyntheticSave))]
+    public void DeletedItemIsGoneAfterWritingAndReading(uint version)
+    {
+        var file = SyntheticSave.Read(version);
+        foreach (var (n, i) in file.Walk().Select((n, i) => (n, i))) n.Id = (uint)i;
+        var inv = Inventory.Read(file)!;
+        Assert.False(inv.Remove(inv.Money!));
+        var gone = inv.SubInventories[0].Items[1];
+        Assert.True(inv.Remove(gone));
+        Assert.Equal(file.Walk().Select((_, i) => (uint)i), file.Walk().Select(n => n.Id));
+
+        var again = Inventory.Read(SaveFile.Read(file.Write()))!;
+        Assert.Equal([1, 1], again.SubInventories.Select(s => s.Items.Count));
+        Assert.NotEqual(gone.RecordHash, again.SubInventories[0].Items[0].RecordHash);
+        Assert.Equal(5000u, again.Money!.Quantity);
+        Assert.Equal(VehicleId.FromName("Items.FirstAidWhiffV0").Hash, again.SubInventories[1].Items[0].RecordHash);
+    }
+
+    [Fact]
+    public void QuestItemsAreRecognisedByTheirRecord()
+    {
+        var quest = VehicleId.FromName("Items.Q005_Johnny_Glasses");
+        Assert.True(RecordNames.IsQuestItem(quest.Hash, (byte)"Items.Q005_Johnny_Glasses".Length));
+        Assert.False(RecordNames.IsQuestItem(VehicleId.FromName("Items.money").Hash, (byte)"Items.money".Length));
+        var inv = Inventory.Read(SyntheticSave.Read(277))!;
+        Assert.Null(inv.Add(quest.Hash, (byte)"Items.Q005_Johnny_Glasses".Length, ItemShape.Gear, 1));
+    }
+
     [Theory, MemberData(nameof(GarageVersions))]
     public void VehicleUnlocksSurviveWritingAndReadingTheWholeFile(uint version)
     {

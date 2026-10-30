@@ -67,6 +67,7 @@
                             <TextBlock Classes="dim" Text="QUANTITY" FontSize="11" FontWeight="Bold" LetterSpacing="1.5" />
                             <NumericUpDown Value="{Binding Quantity}" Minimum="0" Maximum="{Binding MaxQuantity}" Increment="1" FormatString="N0" />
                         </StackPanel>
+                        <Button Content="DELETE ITEM" Command="{Binding $parent[UserControl].DataContext.DeleteItemCommand}" />
                     </StackPanel>
                 </controls:NotchedBorder>
 

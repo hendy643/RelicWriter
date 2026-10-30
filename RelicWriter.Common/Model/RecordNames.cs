@@ -19,6 +19,12 @@ public static partial class RecordNames
     /// <summary>The name to show (an item the record table lacks takes its catalogue name), or null when nothing is known about the id.</summary>
     public static string? Display(uint hash, byte length) => GameDatabase.Current.Record(hash, length) is { } known ? known.DisplayName ?? Humanize(known.Name) : GameDatabase.Current.Item(hash, length)?.Name;
 
+    /// <summary>Whether the record belongs to a quest (Items.Q001_..., sq and mq for side and main quests): the editor neither adds nor deletes these.</summary>
+    public static bool IsQuestItem(uint hash, byte length) => Record(hash, length) is { } name && QuestRecord().IsMatch(name);
+
+    [GeneratedRegex(@"^Items\.(q|sq|mq)\d{3}", RegexOptions.IgnoreCase)]
+    private static partial Regex QuestRecord();
+
     /// <summary>"Items.Preset_Yukimura_Default" becomes "Yukimura Default".</summary>
     public static string Humanize(string record)
     {

@@ -27,6 +27,8 @@ public partial class ItemViewModel : ViewModelBase
 
     public bool IsMoney => entry.IsMoney;
 
+    public bool IsQuest => RecordNames.IsQuestItem(entry.RecordHash, entry.RecordLength);
+
     /// <summary>The save stores only a hash; the name comes from the game files, else from the bundled record-name table.</summary>
     public string Title => RecordNames.Display(entry.RecordHash, (byte)entry.RecordLength) ?? (entry.IsMoney ? "Eddies" : "Unknown item");
 
@@ -67,7 +69,7 @@ public partial class InventoryViewModel : ViewModelBase
     readonly Inventory inventory;
     readonly Action changed;
     readonly EditionViewModel edition;
-    readonly IReadOnlyList<ItemInfo> catalogue = [.. GameDatabase.Current.Items.Values];
+    readonly IReadOnlyList<ItemInfo> catalogue = [.. GameDatabase.Current.Items.Values.Where(i => !RecordNames.IsQuestItem(i.Hash, i.Length))];
     ItemViewModel? money;
 
     // Container ids and names as documented by the CyberCAT project (MIT). Not verified against the game; unlisted ones are numbered.
@@ -171,6 +173,26 @@ public partial class InventoryViewModel : ViewModelBase
     }
 
     bool CanAdd() => PickerSelected is not null;
+
+    [RelayCommand(CanExecute = nameof(CanDelete))]
+    void DeleteItem()
+    {
+        if (Selected is not { } item) return;
+        var sub = Subs.ToList().IndexOf(SelectedSub!);
+        if (!inventory.Remove(item.Entry))
+        {
+            AddStatus = "This item cannot be deleted (eddies, a quest item, or the last item stored in the save).";
+            return;
+        }
+        changed();
+        Rebuild(null);
+        SelectedSub = Subs[sub];
+        AddStatus = $"Deleted {item.Title}.";
+    }
+
+    bool CanDelete() => Selected is { IsMoney: false, IsQuest: false };
+
+    partial void OnSelectedChanged(ItemViewModel? value) => DeleteItemCommand.NotifyCanExecuteChanged();
 
     partial void OnMoneyChanged(decimal? value)
     {

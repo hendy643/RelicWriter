@@ -136,6 +136,7 @@ public sealed class Inventory
     /// </summary>
     public ItemEntry? Add(uint hash, byte length, ItemShape shape, uint quantity)
     {
+        if (RecordNames.IsQuestItem(hash, length)) return null;
         var bag = SubInventories.FirstOrDefault(s => s.Id == BagId);
         if (bag is null || bag.CountSegment < 0 || bag.Items.Count == 0) return null;
         var template = SubInventories.SelectMany(s => s.Items).Where(i => i.Shape == shape && !i.IsMoney).MinBy(i => i.Node.Data.Length);
@@ -166,6 +167,34 @@ public sealed class Inventory
 
         Parse();
         return SubInventories.First(s => s.Id == BagId).Items.First(i => i.Node == added);
+    }
+
+    /// <summary>
+    /// Deletes an item: the reverse of <see cref="Add"/>. The item's node and the id header in front of it go, the sub-inventory count drops by one and the node
+    /// numbering is kept in step; the inventory is read again, so entries obtained before the call must be dropped. Returns false for eddies, quest items, for a save whose
+    /// sub-inventory records did not parse, and for the very last node of the inventory (its trailing bytes are not understood). Not checked in the game itself.
+    /// </summary>
+    public bool Remove(ItemEntry item)
+    {
+        var sub = SubInventories.FirstOrDefault(s => s.Items.Contains(item));
+        var c = node.Children.IndexOf(item.Node);
+        if (sub is null || sub.CountSegment < 0 || item.IsMoney || RecordNames.IsQuestItem(item.RecordHash, item.RecordLength) || c < 0 || c == node.Children.Count - 1) return false;
+        ApplyTo();
+
+        var sequential = file.Walk().Select((n, i) => n.Id == (uint)i).All(x => x);
+        var segments = Segments();
+        var count = segments[sub.CountSegment].AsSpan(sub.CountOffset);
+        BinaryPrimitives.WriteUInt32LittleEndian(count, BinaryPrimitives.ReadUInt32LittleEndian(count) - 1);
+
+        // The gap in front of the item ends in its id header; drop that and join the item's own gap on.
+        var gap = segments[c][..^idSize].Concat(item.Node.After).ToArray();
+        if (c == 0) node.Data = gap;
+        else node.Children[c - 1].After = gap;
+        node.Children.RemoveAt(c);
+
+        if (sequential) foreach (var (n, i) in file.Walk().Select((n, i) => (n, i))) n.Id = (uint)i;
+        Parse();
+        return true;
     }
 
     public void ApplyTo()
