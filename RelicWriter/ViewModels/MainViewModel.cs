@@ -20,7 +20,7 @@ public interface IFileDialogs
 
     Task<string?> PickSaveAsync(string suggestedFileName);
 
-    Task<string?> PickSaveTextAsync(string suggestedFileName);
+    Task ShowBugReportAsync(string text);
 
     Task OpenUrlAsync(string url);
 }
@@ -118,22 +118,13 @@ public partial class MainViewModel : ViewModelBase
         else SetStatus("Game found. Vehicle pictures appear the next time a save is opened.", false);
     }
 
-    /// <summary>Writes the bug report (versions and counts only, see <see cref="BugReport"/>) where the user chooses, then opens the issue tracker to attach it to.</summary>
+    /// <summary>Opens the issue tracker and shows a bug report filled in from the issue template (versions and counts only, see <see cref="BugReport"/>) to copy into the new issue. Nothing is posted.</summary>
     [RelayCommand]
     async Task ReportBugAsync()
     {
-        if (Dialogs is null || await Dialogs.PickSaveTextAsync("relicwriter-bug-report.txt") is not { } path) return;
-        try
-        {
-            await File.WriteAllTextAsync(path, BugReport.Build(file, file is null ? null : Info?.PhantomLiberty));
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            SetStatus($"Could not write the bug report: {e.Message}", true);
-            return;
-        }
+        if (Dialogs is null) return;
         await Dialogs.OpenUrlAsync(IssuesUrl);
-        SetStatus("Bug report written. Describe the problem in the issue that opened and attach that file; it holds versions and counts only.", false);
+        await Dialogs.ShowBugReportAsync(BugReport.Build(new(file, file is null ? null : Info?.PhantomLiberty, inventory, Inventory?.Selected?.Entry, BackupsBesideSave())));
     }
 
     [RelayCommand]
@@ -218,6 +209,10 @@ public partial class MainViewModel : ViewModelBase
             SetStatus($"Could not save: {e.Message}", true);
         }
     }
+
+    // RelicWriter keeps a backup next to a save the first time it overwrites it, so any backup there means this file was written by RelicWriter before.
+    int? BackupsBesideSave() =>
+        FilePath is { } path && Path.GetDirectoryName(path) is { } dir && Directory.Exists(dir) ? Directory.GetFiles(dir, Path.GetFileName(path) + ".relicwriter-backup-*").Length : null;
 
     void MarkDirty() => IsDirty = true;
 

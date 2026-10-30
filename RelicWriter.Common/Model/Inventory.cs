@@ -17,6 +17,9 @@ public sealed class ItemEntry
     public required uint Seed { get; init; }
     public ItemShape Shape { get; init; }
 
+    /// <summary>The size of the item's node data in bytes, for bug reports.</summary>
+    public int NodeBytes => Node.Data.Length;
+
     /// <summary>The stack size, or null for items that carry no quantity (kind 2: gear with mods).</summary>
     public uint? Quantity { get; set; }
 
@@ -25,6 +28,9 @@ public sealed class ItemEntry
     /// <summary>The record in the form the game's data uses for ids that have no known name.</summary>
     public string RecordId => $"{RecordHash:x8}/{RecordLength}";
 }
+
+/// <summary>One change made through <see cref="Inventory"/> since the save was opened, kept for bug reports. An add also names the item it was copied from.</summary>
+public sealed record InventoryEdit(string Action, uint Hash, byte Length, ItemShape Shape, uint? DonorHash, byte? DonorLength, int? DonorBytes, int Bytes);
 
 public sealed class SubInventory
 {
@@ -56,6 +62,8 @@ public sealed class Inventory
     const int KindStack = 0, KindOther = 1, KindGear = 2;
     const uint SeedOfOtherKind = 2;
     const int NoQuantity = -1;
+    /// <summary>From this save version an ItemMod ends in a 16-byte trailer.</summary>
+    const uint ModTrailerVersion = 192;
     // A sub-inventory record: u64 id, u32 item count.
     const int SubInventoryCountOffset = sizeof(ulong), SubInventorySize = sizeof(ulong) + sizeof(uint);
 
@@ -75,6 +83,13 @@ public sealed class Inventory
     }
 
     public List<SubInventory> SubInventories { get; } = [];
+
+    /// <summary>What was added and deleted since the save was opened, oldest first.</summary>
+    public List<InventoryEdit> Edits { get; } = [];
+
+    /// <summary>The mod tree of a gear or stack item, or null for the other shape or when the tree is not in a layout this reads exactly.</summary>
+    public ItemModSummary? ModTree(ItemEntry item) =>
+        item.Shape == ItemShape.Other ? null : ItemModTree.Read(item.Node.Data, ItemModTree.Start(idSize, item.Shape == ItemShape.Stack), idSize, file.Header.SaveVersion >= ModTrailerVersion);
 
     public ItemEntry? Money => SubInventories.SelectMany(s => s.Items).FirstOrDefault(i => i.IsMoney);
 
@@ -165,6 +180,7 @@ public sealed class Inventory
         if (sequential) foreach (var (n, i) in file.Walk().Select((n, i) => (n, i))) n.Id = (uint)i;
         else added.Id = file.Walk().Max(n => n.Id) + 1;
 
+        Edits.Add(new("add", hash, length, shape, template.RecordHash, template.RecordLength, template.Node.Data.Length, data.Length));
         Parse();
         return SubInventories.First(s => s.Id == BagId).Items.First(i => i.Node == added);
     }
@@ -181,6 +197,7 @@ public sealed class Inventory
         if (sub is null || sub.CountSegment < 0 || item.IsMoney || RecordNames.IsQuestItem(item.RecordHash, item.RecordLength) || c < 0 || c == node.Children.Count - 1) return false;
         ApplyTo();
 
+        Edits.Add(new("remove", item.RecordHash, item.RecordLength, item.Shape, null, null, null, item.Node.Data.Length));
         var sequential = file.Walk().Select((n, i) => n.Id == (uint)i).All(x => x);
         var segments = Segments();
         var count = segments[sub.CountSegment].AsSpan(sub.CountOffset);

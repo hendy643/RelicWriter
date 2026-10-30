@@ -67,11 +67,7 @@ public partial class MainWindow : Window, IFileDialogs
         return file?.TryGetLocalPath();
     }
 
-    public async Task<string?> PickSaveTextAsync(string suggestedFileName)
-    {
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = "Save the bug report", SuggestedFileName = suggestedFileName, DefaultExtension = "txt", FileTypeChoices = [FilePickerFileTypes.TextPlain] });
-        return file?.TryGetLocalPath();
-    }
+    public Task ShowBugReportAsync(string text) => new BugReportWindow(text).ShowDialog(this);
 
     public Task OpenUrlAsync(string url) => Launcher.LaunchUriAsync(new Uri(url));
 }
